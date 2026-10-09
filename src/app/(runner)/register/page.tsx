@@ -9,12 +9,27 @@ import { StepHeader } from "@/features/registration/components/step-header"
 
 export const metadata: Metadata = { title: "เลือกระยะ" }
 
+const header = (
+  <StepHeader
+    current={1}
+    backHref="/"
+    title="เลือกระยะที่ใช่สำหรับคุณ"
+    description="เลือกระยะวิ่งเพื่อเริ่มสมัคร"
+  />
+)
+
 export default function DistancesPage() {
   return (
-    <main className="flex flex-col gap-5">
-      <StepHeader current={1} backHref="/" />
+    <main>
       {/* โควตาคงเหลือต้องสดทุกครั้ง จึงโหลดใน Suspense ไม่ cache */}
-      <Suspense fallback={<DistancePickerSkeleton />}>
+      <Suspense
+        fallback={
+          <div className="flex flex-col gap-5">
+            {header}
+            <DistancePickerSkeleton />
+          </div>
+        }
+      >
         <DistanceList />
       </Suspense>
     </main>
@@ -23,5 +38,5 @@ export default function DistancesPage() {
 
 async function DistanceList() {
   const distances = await getDistances()
-  return <DistancePicker distances={distances} />
+  return <DistancePicker distances={distances} header={header} />
 }

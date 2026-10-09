@@ -1,4 +1,4 @@
-import type { Distance, EventInfo, Lookups, ShirtSize } from "./types"
+import type { Distance, EventInfo, Lookups, ShippingOption, ShirtSize, ZipMatch } from "./types"
 
 export const mockEvent: EventInfo = {
   slug: "hueb-run-2027",
@@ -88,4 +88,61 @@ export const mockLookups: Lookups = {
     { id: 5, nameTh: "เพื่อน" },
     { id: 6, nameTh: "อื่น ๆ" },
   ],
+}
+
+export const mockShippingOptions: ShippingOption[] = [
+  {
+    id: 1,
+    type: "Pickup",
+    name: "รับเองหน้างาน",
+    description: "วันรับบิบ [วันที่] · แสดง QR เช็กอิน",
+    fee: 0,
+  },
+  { id: 2, type: "Post", name: "ส่งทางไปรษณีย์", description: "ส่งกล่องเดียวต่อใบสมัคร", fee: 60 },
+]
+
+/**
+ * ตัวอย่างรหัสไปรษณีย์ไม่กี่รหัสสำหรับทดสอบ (10110, 10330)
+ * ของจริงมาจากตาราง Province/District/Subdistrict ฝั่ง API
+ */
+export const mockZipIndex: Record<string, ZipMatch[]> = {
+  "10110": [
+    { subdistrictId: 101, subdistrict: "คลองเตย", district: "คลองเตย", province: "กรุงเทพมหานคร" },
+    { subdistrictId: 102, subdistrict: "คลองตัน", district: "คลองเตย", province: "กรุงเทพมหานคร" },
+    { subdistrictId: 103, subdistrict: "พระโขนง", district: "คลองเตย", province: "กรุงเทพมหานคร" },
+    {
+      subdistrictId: 104,
+      subdistrict: "คลองเตยเหนือ",
+      district: "วัฒนา",
+      province: "กรุงเทพมหานคร",
+    },
+    {
+      subdistrictId: 105,
+      subdistrict: "คลองตันเหนือ",
+      district: "วัฒนา",
+      province: "กรุงเทพมหานคร",
+    },
+    {
+      subdistrictId: 106,
+      subdistrict: "พระโขนงเหนือ",
+      district: "วัฒนา",
+      province: "กรุงเทพมหานคร",
+    },
+  ],
+  "10330": [
+    { subdistrictId: 201, subdistrict: "รองเมือง", district: "ปทุมวัน", province: "กรุงเทพมหานคร" },
+    { subdistrictId: 202, subdistrict: "วังใหม่", district: "ปทุมวัน", province: "กรุงเทพมหานคร" },
+    { subdistrictId: 203, subdistrict: "ปทุมวัน", district: "ปทุมวัน", province: "กรุงเทพมหานคร" },
+    { subdistrictId: 204, subdistrict: "ลุมพินี", district: "ปทุมวัน", province: "กรุงเทพมหานคร" },
+  ],
+}
+
+/** โค้ดทดสอบ: EARLY10 ลด ฿50, ALUMNI10 ลด 10%, FULL20 = ใช้ครบแล้ว */
+export const mockPromos: Record<
+  string,
+  { type: "fixed" | "percent"; value: number } | "exhausted"
+> = {
+  EARLY10: { type: "fixed", value: 50 },
+  ALUMNI10: { type: "percent", value: 10 },
+  FULL20: "exhausted",
 }

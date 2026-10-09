@@ -1,0 +1,136 @@
+"use server"
+
+import { ApiError, apiFetch } from "@/lib/api/client"
+import { eventSlug, useMock } from "./api"
+import {
+  mockDistances,
+  mockPromos,
+  mockShippingOptions,
+  mockShirtSizes,
+  mockZipIndex,
+} from "./mocks"
+import { createOrderSchema, normalizePhone, type CreateOrderPayload } from "./schema"
+import type { ActionResult, CreatedOrder, PromoResult, ZipMatch } from "./types"
+
+/**
+ * Server actions ของขั้นตอนสมัคร: หน้าเว็บเรียกได้ตรง ๆ โดยไม่ต้องเปิด API ให้ browser
+ * โหมด mock คิดราคาเองที่ฝั่งเซิร์ฟเวอร์ (ไม่เชื่อราคาจากหน้าเว็บ) เหมือนที่ API จริงต้องทำ
+ */
+
+function fail(code: string, message: string, details?: Record<string, unknown>) {
+  return { ok: false as const, code, message, details }
+}
+
+async function callApi<T>(run: () => Promise<T>): Promise<ActionResult<T>> {
+  try {
+    return { ok: true, data: await run() }
+  } catch (error) {
+    if (error instanceof ApiError) return fail(error.code, error.message, error.details)
+    return fail("NETWORK", "เชื่อมต่อระบบไม่ได้ ลองใหม่อีกครั้ง")
+  }
+}
+
+function subtotalOf(distanceIds: number[]) {
+  return distanceIds.reduce(
+    (sum, id) => sum + (mockDistances.find((d) => d.id === id)?.price ?? 0),
+    0,
+  )
+}
+
+function mockPromo(code: string, subtotal: number): ActionResult<PromoResult> {
+  const promo = mockPromos[code]
+  if (!promo) return fail("PROMO_INVALID", "โค้ดไม่ถูกต้องหรือหมดอายุแล้ว")
+  if (promo === "exhausted") return fail("PROMO_EXHAUSTED", "โค้ดนี้ถูกใช้ครบจำนวนแล้ว")
+  const discount = promo.type === "fixed" ? promo.value : Math.round((subtotal * promo.value) / 100)
+  const label = promo.type === "fixed" ? `ลด ฿${promo.value}` : `ลด ${promo.value}%`
+  return { ok: true, data: { code, discount: Math.min(discount, subtotal), label } }
+}
+
+export async function validatePromo(
+  rawCode: string,
+  distanceIds: number[],
+): Promise<ActionResult<PromoResult>> {
+  const code = rawCode.trim().toUpperCase()
+  if (!code) return fail("PROMO_INVALID", "กรุณากรอกโค้ด")
+  if (useMock) return mockPromo(code, subtotalOf(distanceIds))
+  return callApi(() =>
+    apiFetch<PromoResult>(`/events/${eventSlug}/promo/validate`, {
+      method: "POST",
+      body: JSON.stringify({ code, distanceIds }),
+    }),
+  )
+}
+
+export async function lookupZip(zipCode: string): Promise<ActionResult<ZipMatch[]>> {
+  if (!/^\d{5}$/.test(zipCode)) return fail("VALIDATION", "รหัสไปรษณีย์ 5 หลัก")
+  if (useMock) return { ok: true, data: mockZipIndex[zipCode] ?? [] }
+  return callApi(() => apiFetch<ZipMatch[]>(`/geo/zip/${zipCode}`))
+}
+
+/** เก็บออเดอร์จำลองไว้ในหน่วยความจำ ให้หน้าชำระเงินอ่านต่อได้ระหว่างพัฒนา */
+const mockOrders = ((globalThis as { __mockOrders?: Map<string, CreatedOrder> }).__mockOrders ??=
+  new Map())
+
+export async function createOrder(input: CreateOrderPayload): Promise<ActionResult<CreatedOrder>> {
+  const parsed = createOrderSchema.safeParse(input)
+  if (!parsed.success) return fail("VALIDATION", "ข้อมูลไม่ครบหรือไม่ถูกต้อง")
+
+  const payload: CreateOrderPayload = {
+    ...parsed.data,
+    contact: { ...parsed.data.contact, phone: normalizePhone(parsed.data.contact.phone) },
+    runners: parsed.data.runners.map((r) => ({
+      ...r,
+      phone: normalizePhone(r.phone),
+      emergencyContact: { ...r.emergencyContact, phone: normalizePhone(r.emergencyContact.phone) },
+    })),
+    shippingAddress: parsed.data.shippingAddress && {
+      ...parsed.data.shippingAddress,
+      phone: normalizePhone(parsed.data.shippingAddress.phone),
+    },
+  }
+
+  if (!useMock) {
+    return callApi(() =>
+      apiFetch<CreatedOrder>(`/events/${eventSlug}/orders`, {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }),
+    )
+  }
+
+  for (const runner of payload.runners) {
+    const distance = mockDistances.find((d) => d.id === runner.distanceId)
+    if (!distance || distance.remaining <= 0) {
+      return fail("QUOTA_FULL", `ระยะ ${distance?.distanceKm ?? ""} กม. เต็มแล้ว`, {
+        distanceId: runner.distanceId,
+      })
+    }
+    const size = mockShirtSizes.find((s) => s.id === runner.shirtSizeId)
+    if (!size || size.remaining <= 0) {
+      return fail("SHIRT_OUT_OF_STOCK", `เสื้อไซซ์ ${size?.size ?? ""} หมดแล้ว`, {
+        shirtSizeId: runner.shirtSizeId,
+      })
+    }
+  }
+
+  const subtotal = subtotalOf(payload.runners.map((r) => r.distanceId))
+  let discount = 0
+  if (payload.promoCode) {
+    const promo = mockPromo(payload.promoCode, subtotal)
+    if (!promo.ok) return promo
+    discount = promo.data.discount
+  }
+  const fee = mockShippingOptions.find((o) => o.id === payload.shippingOptionId)?.fee ?? 0
+  const total = subtotal - discount + fee
+  // เศษสตางค์ไม่ซ้ำต่อออเดอร์ ใช้จับคู่ยอดโอน (ของจริงสุ่มและตรวจ unique ที่ DB)
+  const satang = (Math.floor(Math.random() * 99) + 1) / 100
+  const order: CreatedOrder = {
+    orderId: crypto.randomUUID(),
+    orderNo: `RUN27-${String(mockOrders.size + 123).padStart(6, "0")}`,
+    total,
+    payableAmount: Math.round((total + satang) * 100) / 100,
+    expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+  }
+  mockOrders.set(order.orderId, order)
+  return { ok: true, data: order }
+}

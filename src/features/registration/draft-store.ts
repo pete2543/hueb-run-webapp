@@ -1,7 +1,7 @@
 "use client"
 
 import { useSyncExternalStore } from "react"
-import type { RunnerValues } from "./schema"
+import type { RunnerValues, SummaryStepValues } from "./schema"
 
 /**
  * ข้อมูลใบสมัครที่กรอกค้างไว้ระหว่างขั้นตอน 1–3 (ยังไม่ส่งเข้า API)
@@ -15,6 +15,8 @@ export type RunnerDraft = Partial<RunnerValues>
 export type RegistrationDraft = {
   runners: RunnerDraft[]
   acceptedPdpa?: boolean
+  /** ขั้นตอนที่ 3: ผู้ติดต่อ วิธีรับของ ที่อยู่ โค้ดส่วนลด */
+  summary?: Partial<SummaryStepValues>
 }
 
 const storageKey = "hueb-run:registration-draft"

@@ -105,7 +105,10 @@ export function FaqSection() {
   return (
     <section className="mx-auto max-w-3xl px-5 py-10 lg:py-14">
       <div className="flex flex-col gap-8">
-        <SectionHeading id="faq">คำถามที่พบบ่อย</SectionHeading>
+        <div className="flex items-end justify-between gap-4">
+          <SectionHeading id="faq">คำถามที่พบบ่อย</SectionHeading>
+          <Mascot pose="thinking" sizes="112px" className="-mb-4 h-auto w-20 shrink-0 sm:w-28" />
+        </div>
         <div className="flex flex-col gap-3">
           {faqs.map(({ q, a }) => (
             <details key={q} className="group rounded-2xl border bg-white open:shadow-sm">

@@ -47,3 +47,41 @@ export type Lookups = {
   bloodTypes: LookupItem[]
   emergencyRelations: LookupItem[]
 }
+
+/** GET /events/{slug}/shipping-options */
+export type ShippingOption = {
+  id: number
+  type: "Pickup" | "Post"
+  name: string
+  description: string
+  fee: number
+}
+
+/** GET /geo/zip/{zipCode} คืนได้หลายตำบลต่อรหัสไปรษณีย์ */
+export type ZipMatch = {
+  subdistrictId: number
+  subdistrict: string
+  district: string
+  province: string
+}
+
+/** POST /events/{slug}/promo/validate */
+export type PromoResult = {
+  code: string
+  discount: number
+  label: string
+}
+
+/** 201 จาก POST /events/{slug}/orders */
+export type CreatedOrder = {
+  orderId: string
+  orderNo: string
+  total: number
+  payableAmount: number
+  expiresAt: string
+}
+
+/** ผลของ server action: ไม่ throw ให้หน้าเว็บแสดง error ตาม code ได้ */
+export type ActionResult<T> =
+  | { ok: true; data: T }
+  | { ok: false; code: string; message: string; details?: Record<string, unknown> }

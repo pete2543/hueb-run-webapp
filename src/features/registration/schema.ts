@@ -79,3 +79,56 @@ export function emptyRunner(distanceId?: number): Partial<RunnerValues> {
     medicalNote: "",
   }
 }
+
+/** ที่อยู่จัดส่ง (ใช้เมื่อเลือกส่งไปรษณีย์) */
+export const shippingAddressSchema = z.object({
+  name: z.string().trim().min(1, "กรุณากรอกชื่อผู้รับ").max(150),
+  phone,
+  line1: z.string().trim().min(5, "กรุณากรอกบ้านเลขที่ ซอย ถนน").max(300),
+  postalCode: z.string().regex(/^\d{5}$/, "รหัสไปรษณีย์ 5 หลัก"),
+  subdistrictId: z.number(required("กรุณาเลือกตำบล/แขวง")),
+})
+
+/** ขั้นตอนที่ 3: ผู้ติดต่อ วิธีรับของ ที่อยู่ โค้ดส่วนลด */
+export const summaryStepSchema = z
+  .object({
+    contact: z.object({
+      name: z.string().trim().min(1, "กรุณากรอกชื่อผู้ติดต่อ").max(150),
+      phone,
+      email: z.union([z.literal(""), z.email("อีเมลไม่ถูกต้อง")]),
+    }),
+    shippingOptionId: z.number(required("กรุณาเลือกวิธีรับของ")),
+    /** true เมื่อตัวเลือกที่เลือกเป็นแบบส่งไปรษณีย์ (หน้าเว็บตั้งให้) */
+    needsAddress: z.boolean(),
+    shippingAddress: z.unknown(),
+    promoCode: z.string(),
+  })
+  .superRefine((values, ctx) => {
+    if (!values.needsAddress) return
+    const result = shippingAddressSchema.safeParse(values.shippingAddress)
+    if (result.success) return
+    for (const issue of result.error.issues) {
+      ctx.addIssue({
+        code: "custom",
+        message: issue.message,
+        path: ["shippingAddress", ...issue.path],
+      })
+    }
+  })
+
+export type ShippingAddressValues = z.infer<typeof shippingAddressSchema>
+export type SummaryStepValues = Omit<z.infer<typeof summaryStepSchema>, "shippingAddress"> & {
+  shippingAddress?: Partial<ShippingAddressValues>
+}
+
+/** รูปคำขอของ POST /events/{slug}/orders (docs/api-contract.md) */
+export const createOrderSchema = z.object({
+  contact: z.object({ name: z.string(), phone: z.string(), email: z.string() }),
+  runners: z.array(runnerSchema).min(1).max(maxRunnersPerOrder),
+  shippingOptionId: z.number(),
+  shippingAddress: shippingAddressSchema.nullable(),
+  promoCode: z.string(),
+  acceptedPdpa: z.literal(true),
+})
+
+export type CreateOrderPayload = z.infer<typeof createOrderSchema>

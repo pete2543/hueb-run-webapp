@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: "ข้อมูลนักวิ่
 
 export default function RunnersPage() {
   return (
-    <main className="flex flex-col gap-5">
+    <main className="mx-auto flex w-full max-w-2xl flex-col gap-5">
       <StepHeader current={2} backHref="/register" />
       <Suspense fallback={<div className="h-[36rem] animate-pulse rounded-2xl bg-muted" />}>
         <RunnersData />

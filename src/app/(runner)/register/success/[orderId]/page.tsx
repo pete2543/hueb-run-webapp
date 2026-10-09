@@ -7,7 +7,7 @@ export const metadata: Metadata = { title: "สมัครสำเร็จ" }
 
 export default function SuccessPage({ params }: PageProps<"/register/success/[orderId]">) {
   return (
-    <main className="flex flex-col gap-6">
+    <main className="mx-auto flex w-full max-w-2xl flex-col gap-6">
       <div className="flex flex-col items-center gap-2 text-center">
         <Mascot pose="thumbs-up" sizes="160px" className="h-auto w-40" />
         <h1 className="text-2xl font-semibold">สมัครสำเร็จ</h1>

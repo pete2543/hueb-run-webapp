@@ -13,6 +13,7 @@ import {
   useWatch,
   type DefaultValues,
 } from "react-hook-form"
+import { Mascot } from "@/components/mascot"
 import { formatBaht } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { getDraft, setDraft, useDraftReady, type RegistrationDraft } from "../draft-store"
@@ -73,6 +74,7 @@ function RunnersForm({ initial, ...options }: Options & { initial: RegistrationD
         formState: { values: true },
         callback: ({ values }) => {
           setDraft({
+            ...getDraft(),
             runners: values.runners as RegistrationDraft["runners"],
             acceptedPdpa: values.acceptedPdpa,
           })
@@ -103,7 +105,7 @@ function RunnersForm({ initial, ...options }: Options & { initial: RegistrationD
   }
 
   const onValid = (values: RunnersStepValues) => {
-    setDraft({ runners: values.runners, acceptedPdpa: values.acceptedPdpa })
+    setDraft({ ...getDraft(), runners: values.runners, acceptedPdpa: values.acceptedPdpa })
     router.push("/register/summary")
   }
 
@@ -143,24 +145,27 @@ function RunnersForm({ initial, ...options }: Options & { initial: RegistrationD
           />
         ))}
 
-        <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-primary/40 bg-muted/60 p-5 text-center">
-          <p className="font-semibold">สมัครให้เพื่อนด้วยไหม?</p>
-          <p className="text-sm text-muted-foreground">
-            เพิ่มนักวิ่งหลายคนในใบสมัครเดียว จ่ายเงินครั้งเดียว (สูงสุด {maxRunnersPerOrder} คน)
-          </p>
-          <button
-            type="button"
-            disabled={!canAdd}
-            onClick={() =>
-              append(emptyRunner() as RunnersStepValues["runners"][number], {
-                focusName: `runners.${fields.length}.titleId`,
-              })
-            }
-            className="flex min-h-11 items-center gap-2 rounded-full border-2 border-primary bg-white px-5 font-semibold text-primary hover:bg-primary hover:text-primary-foreground disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            <Plus className="size-4" aria-hidden />
-            เพิ่มนักวิ่งอีกคน
-          </button>
+        <div className="flex items-center gap-3 rounded-2xl border border-dashed border-primary/40 bg-muted/60 p-4 sm:gap-5 sm:p-5">
+          <Mascot pose="pointing" sizes="112px" className="h-auto w-20 shrink-0 sm:w-28" />
+          <div className="flex min-w-0 flex-col items-start gap-2">
+            <p className="font-semibold">สมัครให้เพื่อนด้วยไหม?</p>
+            <p className="text-sm text-muted-foreground">
+              เพิ่มนักวิ่งหลายคนในใบสมัครเดียว จ่ายเงินครั้งเดียว (สูงสุด {maxRunnersPerOrder} คน)
+            </p>
+            <button
+              type="button"
+              disabled={!canAdd}
+              onClick={() =>
+                append(emptyRunner() as RunnersStepValues["runners"][number], {
+                  focusName: `runners.${fields.length}.titleId`,
+                })
+              }
+              className="flex min-h-11 items-center gap-2 rounded-full border-2 border-primary bg-white px-5 font-semibold text-primary hover:bg-primary hover:text-primary-foreground disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <Plus className="size-4" aria-hidden />
+              เพิ่มนักวิ่งอีกคน
+            </button>
+          </div>
         </div>
 
         <div className="flex flex-col gap-1.5">
