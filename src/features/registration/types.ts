@@ -3,6 +3,17 @@
  * ปรับให้ตรงกับ API จริงเมื่อ generate type จาก OpenAPI ได้แล้ว
  */
 
+/** GET /events/{slug} (ค่า null = ยังไม่ประกาศ แสดงเป็น "เร็ว ๆ นี้") */
+export type EventInfo = {
+  slug: string
+  name: string
+  tagline: string
+  eventDate: string | null
+  venue: string | null
+  registrationOpensAt: string | null
+  registrationClosesAt: string | null
+}
+
 /** GET /events/{slug}/distances */
 export type Distance = {
   id: number

@@ -1,40 +1,51 @@
-import Link from "next/link"
-import { Logo } from "@/components/logo"
-import { Mascot } from "@/components/mascot"
-import { PagePlaceholder } from "@/components/page-placeholder"
+import { Suspense } from "react"
+import { DistanceCards } from "@/features/home/components/distance-cards"
+import { Hero } from "@/features/home/components/hero"
+import {
+  FaqSection,
+  SectionHeading,
+  SiteFooter,
+  SouvenirSection,
+  StepsSection,
+} from "@/features/home/components/sections"
+import { MobileCta } from "@/features/home/components/mobile-cta"
+import { SiteHeader } from "@/features/home/components/site-header"
+import { getDistances, getEvent } from "@/features/registration/api"
 
 export default function HomePage() {
   return (
-    <main className="flex flex-col gap-10">
-      <header className="flex items-center justify-between">
-        <Logo />
-        <Link
-          href="/register"
-          className="flex min-h-11 items-center rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground"
-        >
-          สมัครเลย
-        </Link>
-      </header>
+    <div className="flex flex-1 flex-col bg-linear-to-b from-[#f4f8ff] via-white to-white pb-20 lg:pb-0">
+      <SiteHeader />
+      <main className="flex flex-col">
+        <Suspense fallback={<div className="min-h-[80vh]" />}>
+          <HeroWithEvent />
+        </Suspense>
 
-      <section className="flex flex-col items-center gap-5 text-center">
-        <h1 className="text-4xl leading-tight font-bold">
-          วิ่งด้วยกัน
-          <span className="block text-primary">ให้ถึงเส้นชัย</span>
-        </h1>
-        <Mascot pose="running" highPriority sizes="224px" className="h-auto w-56" />
-        <Link
-          href="/register"
-          className="flex min-h-14 w-full items-center justify-center rounded-2xl bg-primary font-heading text-lg font-semibold text-primary-foreground"
-        >
-          เลือกระยะ &amp; สมัคร
-        </Link>
-      </section>
+        <section className="mx-auto w-full max-w-6xl px-5 py-10 lg:py-14">
+          <div className="flex flex-col gap-8">
+            <SectionHeading id="distances">เลือกระยะที่ใช่สำหรับคุณ</SectionHeading>
+            <Suspense fallback={<div className="h-32 animate-pulse rounded-3xl bg-muted" />}>
+              <DistanceList />
+            </Suspense>
+          </div>
+        </section>
 
-      <PagePlaceholder
-        title="หน้าแรก (ส่วนที่เหลือ)"
-        design="Main.dc.html"
-        notes="นับถอยหลัง early bird, การ์ดระยะ, สิ่งที่จะได้รับ, 4 ขั้นตอน, ลิงก์ LINE/Facebook · ถ้าทำมาสคอตเป็น 3D ให้โหลดแบบ lazy (next/dynamic, ssr: false) ใช้ภาพนิ่งนี้เป็นตัวสำรอง และเคารพ prefers-reduced-motion"
-      />
-    </main>
+        <SouvenirSection />
+        <StepsSection />
+        <FaqSection />
+      </main>
+      <SiteFooter />
+      <MobileCta />
+    </div>
   )
+}
+
+async function HeroWithEvent() {
+  const event = await getEvent()
+  return <Hero event={event} />
+}
+
+async function DistanceList() {
+  const distances = await getDistances()
+  return <DistanceCards distances={distances} />
 }

@@ -1,4 +1,14 @@
-import type { Distance } from "./types"
+import type { Distance, EventInfo } from "./types"
+
+export const mockEvent: EventInfo = {
+  slug: "hueb-run-2027",
+  name: "HUEB RUN 2027",
+  tagline: "งานวิ่งของชาวศิษย์เก่า",
+  eventDate: null,
+  venue: null,
+  registrationOpensAt: null,
+  registrationClosesAt: null,
+}
 
 /** ข้อมูลจำลองตามเดโม (docs/design/Distances.dc.html) */
 export const mockDistances: Distance[] = [
