@@ -1,6 +1,7 @@
 "use client"
 
 import { useSyncExternalStore } from "react"
+import type { RunnerValues } from "./schema"
 
 /**
  * ข้อมูลใบสมัครที่กรอกค้างไว้ระหว่างขั้นตอน 1–3 (ยังไม่ส่งเข้า API)
@@ -8,12 +9,12 @@ import { useSyncExternalStore } from "react"
  * เพราะมีข้อมูลส่วนบุคคล/สุขภาพ จึงไม่เก็บถาวรใน localStorage
  */
 
-export type RunnerDraft = {
-  distanceId: number
-}
+/** ระหว่างกรอกยังไม่ครบ ทุกฟิลด์จึงอาจว่าง */
+export type RunnerDraft = Partial<RunnerValues>
 
 export type RegistrationDraft = {
   runners: RunnerDraft[]
+  acceptedPdpa?: boolean
 }
 
 const storageKey = "hueb-run:registration-draft"
@@ -23,7 +24,7 @@ let draft: RegistrationDraft = emptyDraft
 let loaded = false
 const listeners = new Set<() => void>()
 
-function getDraft() {
+export function getDraft() {
   if (!loaded) {
     loaded = true
     try {
@@ -36,7 +37,7 @@ function getDraft() {
   return draft
 }
 
-function setDraft(next: RegistrationDraft) {
+export function setDraft(next: RegistrationDraft) {
   draft = next
   try {
     sessionStorage.setItem(storageKey, JSON.stringify(next))
@@ -55,8 +56,18 @@ export function useRegistrationDraft() {
   return useSyncExternalStore(subscribe, getDraft, () => emptyDraft)
 }
 
+/** true หลัง hydrate แล้ว (อ่าน sessionStorage ได้) ใช้รอก่อนสร้างฟอร์มจาก draft */
+export function useDraftReady() {
+  return useSyncExternalStore(
+    subscribe,
+    () => true,
+    () => false,
+  )
+}
+
 /** ขั้นตอนที่ 1 เลือกระยะให้นักวิ่งคนแรก (คนถัดไปเลือกในหน้าข้อมูลนักวิ่ง) */
 export function setFirstRunnerDistance(distanceId: number) {
-  const [first, ...rest] = getDraft().runners
-  setDraft({ runners: [{ ...first, distanceId }, ...rest] })
+  const current = getDraft()
+  const [first, ...rest] = current.runners
+  setDraft({ ...current, runners: [{ ...first, distanceId }, ...rest] })
 }

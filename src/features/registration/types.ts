@@ -28,3 +28,22 @@ export type Distance = {
   quota: number
   remaining: number
 }
+
+/** GET /events/{slug}/shirt-sizes */
+export type ShirtSize = {
+  id: number
+  size: string
+  /** เช่น "รอบอก 38 นิ้ว" */
+  detail: string | null
+  remaining: number
+}
+
+export type LookupItem = { id: number; nameTh: string }
+
+/** GET /lookups (เรียงตาม SortOrder แล้ว) */
+export type Lookups = {
+  titles: LookupItem[]
+  nationalities: LookupItem[]
+  bloodTypes: LookupItem[]
+  emergencyRelations: LookupItem[]
+}
