@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: "ชำระเงิน" }
 export default function PaymentPage({ params }: PageProps<"/register/payment/[orderId]">) {
   return (
     <main className="flex flex-col gap-6">
-      <StepHeader current={4} />
+      <StepHeader current={4} backHref="/register/summary" />
       {/* orderId รู้ได้ตอน request เท่านั้น จึงต้องอยู่ใน Suspense (Cache Components) */}
       <Suspense fallback={<p className="text-muted-foreground">กำลังโหลดใบสมัคร…</p>}>
         <OrderPayment params={params} />

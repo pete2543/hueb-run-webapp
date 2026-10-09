@@ -14,7 +14,7 @@ export function PagePlaceholder({
 }) {
   return (
     <section className="flex flex-col gap-2 rounded-2xl border bg-card p-5">
-      <h1 className="text-2xl font-semibold">{title}</h1>
+      <h2 className="text-2xl font-semibold">{title}</h2>
       <p className="text-sm text-muted-foreground">
         ยังไม่ได้ทำ · ดีไซน์: <code>docs/design/{design}</code>
       </p>

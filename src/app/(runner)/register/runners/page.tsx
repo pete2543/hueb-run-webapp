@@ -7,7 +7,7 @@ export const metadata: Metadata = { title: "ข้อมูลนักวิ่
 export default function RunnersPage() {
   return (
     <main className="flex flex-col gap-6">
-      <StepHeader current={2} />
+      <StepHeader current={2} backHref="/register" />
       <PagePlaceholder title="ข้อมูลนักวิ่ง" design="Runners.dc.html" />
     </main>
   )

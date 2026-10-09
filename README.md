@@ -82,6 +82,6 @@ src/
 
 ## ข้อควรระวัง
 
-- repo นี้ควรเป็น **Private** เอกสารมีแผนราคาและต้นทุน
+- repo นี้เป็น **Public** ทุกอย่างที่ commit (รวม `docs/` ที่มีแผนราคาและต้นทุน) ทุกคนเห็นได้
 - **ห้าม commit ความลับ**: connection string, LINE channel token, key บริการตรวจสลิป, เลข PromptPay จริง ให้ใช้ environment variable
 - ข้อมูลนักวิ่งมีข้อมูลส่วนบุคคลและข้อมูลสุขภาพ ดู `docs/legal-checklist.md`

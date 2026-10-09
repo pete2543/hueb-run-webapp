@@ -7,7 +7,7 @@ export const metadata: Metadata = { title: "สรุปรายการ" }
 export default function SummaryPage() {
   return (
     <main className="flex flex-col gap-6">
-      <StepHeader current={3} />
+      <StepHeader current={3} backHref="/register/runners" />
       <PagePlaceholder title="สรุปรายการ" design="Summary.dc.html" />
     </main>
   )

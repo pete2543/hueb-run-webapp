@@ -1,10 +1,16 @@
+import Image from "next/image"
 import { cn } from "@/lib/utils"
+import logo from "@/assets/brand/logo.webp"
 
-/** โลโก้ตัวอักษร HUEB RUN บนพื้นขาว (บนพื้น Royal Blue ให้ใช้ RUN สี gold แทน) */
+/** โลโก้ HUEB RUN (พื้นโปร่งใส ใช้บนพื้นขาว/Ice Blue) กำหนดความสูงด้วย className เช่น h-8 */
 export function Logo({ className }: { className?: string }) {
   return (
-    <span className={cn("font-heading text-lg font-bold tracking-wide italic", className)}>
-      HUEB <span className="text-primary">RUN</span>
-    </span>
+    <Image
+      src={logo}
+      alt="HUEB RUN"
+      loading="eager"
+      sizes="200px"
+      className={cn("h-8 w-auto", className)}
+    />
   )
 }
