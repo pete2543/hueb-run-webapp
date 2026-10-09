@@ -2,6 +2,9 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/* เว็บนี้ธีมสว่างอย่างเดียว: คลาส dark: ของ shadcn ทำงานเฉพาะใต้ .dark (ไม่ตามโหมดมืดของเครื่อง) */
+@custom-variant dark (&:is(.dark *));
+
 /*
  * Design tokens ธีม HUEB RUN (docs/ui-flow.md) ธีมสว่าง
  * ตั้งชื่อตาม shadcn/ui เพื่อให้คอมโพเนนต์ใน components/ui ใช้สีของงานได้ทันที

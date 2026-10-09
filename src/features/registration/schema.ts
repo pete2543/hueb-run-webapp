@@ -7,7 +7,7 @@ const required = (message: string) => ({ error: message })
 
 /** รับ 08x-xxx-xxxx, 08xxxxxxxx, 02 xxx xxxx (9–10 หลักขึ้นต้น 0) */
 const phone = z
-  .string()
+  .string(required("กรุณากรอกเบอร์โทร"))
   .trim()
   .min(1, "กรุณากรอกเบอร์โทร")
   .refine((v) => /^0\d{8,9}$/.test(v.replace(/[\s-]/g, "")), "เบอร์โทรไม่ถูกต้อง")
@@ -18,7 +18,7 @@ export function normalizePhone(value: string) {
 }
 
 const birthDate = z
-  .string()
+  .string(required("กรุณาระบุวันเกิด"))
   .min(1, "กรุณาระบุวันเกิด")
   .refine((v) => {
     const date = new Date(`${v}T00:00:00`)
@@ -40,14 +40,18 @@ export const runnerSchema = z
     distanceId: z.number(required("กรุณาเลือกระยะ")),
     shirtSizeId: z.number(required("กรุณาเลือกไซซ์เสื้อ")),
     titleId: z.number(required("กรุณาเลือกคำนำหน้า")),
-    firstName: z.string().trim().min(1, "กรุณากรอกชื่อ").max(100),
-    lastName: z.string().trim().min(1, "กรุณากรอกนามสกุล").max(100),
+    firstName: z.string(required("กรุณากรอกชื่อ")).trim().min(1, "กรุณากรอกชื่อ").max(100),
+    lastName: z.string(required("กรุณากรอกนามสกุล")).trim().min(1, "กรุณากรอกนามสกุล").max(100),
     gender: z.enum(["Male", "Female", "Other"], required("กรุณาเลือกเพศ")),
     birthDate,
     nationalityId: z.number(required("กรุณาเลือกสัญชาติ")),
     phone,
     emergencyContact: z.object({
-      name: z.string().trim().min(1, "กรุณากรอกชื่อผู้ติดต่อฉุกเฉิน").max(150),
+      name: z
+        .string(required("กรุณากรอกชื่อผู้ติดต่อฉุกเฉิน"))
+        .trim()
+        .min(1, "กรุณากรอกชื่อผู้ติดต่อฉุกเฉิน")
+        .max(150),
       relationId: z.number(required("กรุณาเลือกความสัมพันธ์")),
       phone,
     }),

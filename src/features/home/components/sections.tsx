@@ -1,4 +1,10 @@
-import { ChevronDown, Medal, MessageCircleMore, Shirt } from "lucide-react"
+import { Medal, MessageCircleMore, Shirt } from "lucide-react"
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"
 import { Mascot } from "@/components/mascot"
 import { Reveal } from "@/components/reveal"
 
@@ -18,7 +24,7 @@ export function SouvenirSection() {
     { icon: Medal, label: "เหรียญที่ระลึก" },
   ]
   return (
-    <section className="mx-auto max-w-6xl px-5 py-10 lg:py-14">
+    <section className="mx-auto w-full max-w-6xl px-5 py-10 lg:py-14">
       <Reveal className="grid items-center gap-8 rounded-[2rem] bg-linear-to-br from-muted to-white p-6 sm:p-10 lg:grid-cols-[1fr_1.4fr]">
         <div className="flex flex-col gap-4">
           <SectionHeading>ของที่ระลึก</SectionHeading>
@@ -53,7 +59,7 @@ const steps = [
 
 export function StepsSection() {
   return (
-    <section className="mx-auto max-w-6xl px-5 py-10 lg:py-14">
+    <section className="mx-auto w-full max-w-6xl px-5 py-10 lg:py-14">
       <div className="flex flex-col gap-8">
         <SectionHeading>สมัครง่าย 4 ขั้น</SectionHeading>
         <ol className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -103,26 +109,28 @@ const faqs = [
 
 export function FaqSection() {
   return (
-    <section className="mx-auto max-w-3xl px-5 py-10 lg:py-14">
+    <section className="mx-auto w-full max-w-3xl px-5 py-10 lg:py-14">
       <div className="flex flex-col gap-8">
         <div className="flex items-end justify-between gap-4">
           <SectionHeading id="faq">คำถามที่พบบ่อย</SectionHeading>
           <Mascot pose="thinking" sizes="112px" className="-mb-4 h-auto w-20 shrink-0 sm:w-28" />
         </div>
-        <div className="flex flex-col gap-3">
+        <Accordion className="gap-3">
           {faqs.map(({ q, a }) => (
-            <details key={q} className="group rounded-2xl border bg-white open:shadow-sm">
-              <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 px-5 py-3 font-semibold [&::-webkit-details-marker]:hidden">
+            <AccordionItem
+              key={q}
+              value={q}
+              className="rounded-2xl border bg-white transition-shadow not-last:border-b data-open:shadow-md data-open:shadow-primary/5"
+            >
+              <AccordionTrigger className="min-h-14 items-center gap-4 rounded-2xl px-5 py-3 font-heading text-base font-semibold hover:no-underline **:data-[slot=accordion-trigger-icon]:size-5 **:data-[slot=accordion-trigger-icon]:text-primary">
                 {q}
-                <ChevronDown
-                  className="size-5 shrink-0 text-primary transition group-open:rotate-180"
-                  aria-hidden
-                />
-              </summary>
-              <p className="px-5 pb-5 text-muted-foreground">{a}</p>
-            </details>
+              </AccordionTrigger>
+              <AccordionContent className="px-5 pb-5 text-base leading-relaxed text-muted-foreground">
+                {a}
+              </AccordionContent>
+            </AccordionItem>
           ))}
-        </div>
+        </Accordion>
       </div>
     </section>
   )

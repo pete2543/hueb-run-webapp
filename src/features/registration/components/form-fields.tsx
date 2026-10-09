@@ -1,6 +1,29 @@
 "use client"
 
-import { useId } from "react"
+import { CalendarDays } from "lucide-react"
+import { useId, useState } from "react"
+import { th } from "react-day-picker/locale"
+import { Calendar } from "@/components/ui/calendar"
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { useMediaQuery } from "@/hooks/use-media-query"
+import { formatThaiDate } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
 /**
@@ -50,36 +73,213 @@ export function TextField({ label, error, hint, className, ...props }: TextField
   )
 }
 
-type SelectFieldProps = React.ComponentProps<"select"> & {
+export type Option<T extends string | number> = { value: T; label: string }
+
+type SelectFieldProps<T extends string | number> = {
   label: string
+  value: T | undefined | null
+  onChange: (value: T | undefined) => void
+  onBlur?: () => void
+  options: Option<T>[]
   error?: string
-  options: { value: number | string; label: string }[]
+  placeholder?: string
+  disabled?: boolean
+  /** ใช้กับ Controller ของ react-hook-form (field.ref) ให้โฟกัสได้เมื่อมี error */
+  ref?: React.Ref<HTMLButtonElement>
+  className?: string
 }
 
-export function SelectField({ label, error, options, className, ...props }: SelectFieldProps) {
+/** Dropdown ของ shadcn/ui (Base UI) ใช้กับ <Controller> */
+export function SelectField<T extends string | number>({
+  label,
+  value,
+  onChange,
+  onBlur,
+  options,
+  error,
+  placeholder = "เลือก",
+  disabled,
+  ref,
+  className,
+}: SelectFieldProps<T>) {
   const id = useId()
   return (
     <div className={cn("flex min-w-0 flex-col gap-1.5", className)}>
       <label htmlFor={id} className="text-sm font-medium">
         {label}
       </label>
-      <select
-        id={id}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={error ? `${id}-error` : undefined}
-        className={cn(
-          controlClass,
-          "appearance-none bg-[url(/chevron-down.svg)] bg-size-[18px] bg-position-[right_0.8rem_center] bg-no-repeat pr-9",
-        )}
-        {...props}
+      <Select<T>
+        items={options}
+        value={value ?? null}
+        onValueChange={(next) => onChange(next ?? undefined)}
+        // นับว่า "แตะแล้ว" ตอนปิดรายการ ไม่ใช่ตอนโฟกัสย้ายเข้าไปในรายการ (กัน error ขึ้นระหว่างเลือก)
+        onOpenChange={(next) => {
+          if (!next) onBlur?.()
+        }}
+        disabled={disabled}
       >
-        <option value="">เลือก</option>
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
+        <SelectTrigger
+          id={id}
+          ref={ref}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? `${id}-error` : undefined}
+          className={cn(
+            controlClass,
+            "w-full justify-between gap-2 rounded-xl bg-white pr-3 data-placeholder:text-muted-foreground/80 data-popup-open:border-primary data-popup-open:ring-3 data-popup-open:ring-primary/20 data-[size=default]:h-11 [&>svg]:size-5 [&>svg]:text-muted-foreground",
+          )}
+        >
+          <SelectValue placeholder={placeholder} />
+        </SelectTrigger>
+        <SelectContent
+          className="max-h-72 rounded-xl p-1 shadow-lg ring-border"
+          alignItemWithTrigger={false}
+        >
+          {options.map((option) => (
+            <SelectItem
+              key={option.value}
+              value={option.value}
+              className="min-h-11 rounded-lg px-3 pr-9 text-base data-highlighted:bg-muted data-selected:font-semibold data-selected:text-primary [&_svg]:size-4 [&_svg]:text-primary"
+            >
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <ErrorText id={`${id}-error`} message={error} />
+    </div>
+  )
+}
+
+/** "YYYY-MM-DD" ↔ Date (เวลาท้องถิ่น ไม่เพี้ยนวันจาก timezone) */
+function parseIsoDate(value: string | undefined) {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return undefined
+  const [y, m, d] = value.split("-").map(Number)
+  return new Date(y, m - 1, d)
+}
+
+function toIsoDate(date: Date) {
+  const pad = (n: number) => String(n).padStart(2, "0")
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+}
+
+/** ปี พ.ศ. ใน dropdown และหัวปฏิทิน */
+const calendarFormatters = {
+  formatYearDropdown: (date: Date) => String(date.getFullYear() + 543),
+  formatMonthDropdown: (date: Date) => date.toLocaleString("th-TH", { month: "short" }),
+  formatCaption: (date: Date) => date.toLocaleString("th-TH", { month: "long", year: "numeric" }),
+}
+
+type DateFieldProps = {
+  label: string
+  value: string | undefined
+  onChange: (value: string) => void
+  onBlur?: () => void
+  error?: string
+  placeholder?: string
+  min: Date
+  max: Date
+  /** เดือนที่เปิดปฏิทินครั้งแรกเมื่อยังไม่ได้เลือก */
+  defaultMonth?: Date
+  ref?: React.Ref<HTMLButtonElement>
+}
+
+/**
+ * เลือกวันที่ (shadcn Calendar) แสดงผลเป็นภาษาไทย ปี พ.ศ.
+ * คอม: ปฏิทินลอย (Popover) · มือถือ: แผ่นเลื่อนขึ้นจากด้านล่าง (Drawer) ปุ่มวันใหญ่ 44px
+ * มี dropdown เดือน/ปี เลือกปีเกิดได้ในครั้งเดียวไม่ต้องกดย้อนทีละเดือน
+ */
+export function DateField({
+  label,
+  value,
+  onChange,
+  onBlur,
+  error,
+  placeholder = "เลือกวันที่",
+  min,
+  max,
+  defaultMonth,
+  ref,
+}: DateFieldProps) {
+  const id = useId()
+  const [open, setOpen] = useState(false)
+  const desktop = useMediaQuery("(min-width: 640px)")
+  const selected = parseIsoDate(value)
+
+  // นับว่า "แตะแล้ว" ตอนปิดปฏิทิน ไม่ใช่ตอนโฟกัสย้ายเข้าไปในปฏิทิน
+  const handleOpenChange = (next: boolean) => {
+    setOpen(next)
+    if (!next) onBlur?.()
+  }
+
+  const triggerProps = {
+    id,
+    ref,
+    "aria-invalid": error ? true : undefined,
+    "aria-describedby": error ? `${id}-error` : undefined,
+    className: cn(
+      controlClass,
+      "flex items-center justify-between gap-2 pr-3 text-left data-popup-open:border-primary data-popup-open:ring-3 data-popup-open:ring-primary/20",
+    ),
+    children: (
+      <>
+        <span className={cn("truncate", !selected && "text-muted-foreground/80")}>
+          {selected ? formatThaiDate(toIsoDate(selected)) : placeholder}
+        </span>
+        <CalendarDays className="size-5 shrink-0 text-muted-foreground" aria-hidden />
+      </>
+    ),
+  }
+
+  const calendar = (
+    <Calendar
+      mode="single"
+      locale={th}
+      captionLayout="dropdown"
+      formatters={calendarFormatters}
+      selected={selected}
+      defaultMonth={selected ?? defaultMonth}
+      startMonth={min}
+      endMonth={max}
+      disabled={{ before: min, after: max }}
+      onSelect={(date) => {
+        if (!date) return
+        onChange(toIsoDate(date))
+        handleOpenChange(false)
+      }}
+      className="mx-auto bg-transparent p-0"
+      style={{ "--cell-size": desktop ? "2.5rem" : "2.75rem" } as React.CSSProperties}
+    />
+  )
+
+  return (
+    <div className="flex min-w-0 flex-col gap-1.5">
+      <label htmlFor={id} className="text-sm font-medium">
+        {label}
+      </label>
+      {desktop ? (
+        <Popover open={open} onOpenChange={handleOpenChange}>
+          <PopoverTrigger {...triggerProps} />
+          <PopoverContent align="start" className="w-auto rounded-2xl p-3 shadow-xl ring-border">
+            {calendar}
+          </PopoverContent>
+        </Popover>
+      ) : (
+        <Drawer open={open} onOpenChange={handleOpenChange}>
+          <DrawerTrigger {...triggerProps} />
+          <DrawerContent>
+            <DrawerHeader>
+              <DrawerTitle className="text-lg font-semibold">{label}</DrawerTitle>
+              <DrawerDescription>เลือกเดือนและปี (พ.ศ.) ด้านบน แล้วแตะวันที่</DrawerDescription>
+            </DrawerHeader>
+            <div className="px-4 py-3">{calendar}</div>
+            <DrawerFooter className="pb-[max(1rem,env(safe-area-inset-bottom))]">
+              <DrawerClose className="flex min-h-12 items-center justify-center rounded-xl border bg-white font-semibold">
+                ปิด
+              </DrawerClose>
+            </DrawerFooter>
+          </DrawerContent>
+        </Drawer>
+      )}
       <ErrorText id={`${id}-error`} message={error} />
     </div>
   )

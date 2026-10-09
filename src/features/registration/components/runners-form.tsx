@@ -25,7 +25,7 @@ import {
   type RunnersStepValues,
 } from "../schema"
 import type { Distance, Lookups, ShirtSize } from "../types"
-import { ChoiceGroup, SelectField, TextField } from "./form-fields"
+import { ChoiceGroup, DateField, SelectField, TextField } from "./form-fields"
 
 type Options = {
   distances: Distance[]
@@ -33,8 +33,13 @@ type Options = {
   lookups: Lookups
 }
 
-/** แปลงค่าจาก <select> ("" = ยังไม่เลือก) เป็นตัวเลข */
-const toNumber = (v: unknown) => (v === "" || v == null ? undefined : Number(v))
+/** ช่วงวันเกิดที่เลือกได้: ไม่เกิน 100 ปี ถึงวันนี้ เปิดปฏิทินที่ 30 ปีก่อน */
+const now = new Date()
+const birthDateRange = {
+  min: new Date(now.getFullYear() - 100, now.getMonth(), now.getDate() + 1),
+  max: now,
+  defaultMonth: new Date(now.getFullYear() - 30, 0, 1),
+}
 
 /** SweetAlert2 โหลดเมื่อจะใช้เท่านั้น ให้หน้าสมัครเบา */
 const loadAlert = () => import("@/lib/alert")
@@ -54,7 +59,14 @@ function RunnersForm({ initial, ...options }: Options & { initial: RegistrationD
     mode: "onTouched",
     shouldFocusError: false,
     defaultValues: {
-      runners: initial.runners.length ? initial.runners : [emptyRunner()],
+      // เติมช่องที่ยังไม่มี (เช่น มาจากขั้นตอนที่ 1 ที่มีแค่ระยะ) ให้เป็นค่าว่าง
+      runners: initial.runners.length
+        ? initial.runners.map((r) => ({
+            ...emptyRunner(),
+            ...r,
+            emergencyContact: { ...emptyRunner().emergencyContact, ...r.emergencyContact },
+          }))
+        : [emptyRunner()],
       acceptedPdpa: initial.acceptedPdpa ?? false,
     } as DefaultValues<RunnersStepValues>,
   })
@@ -234,7 +246,6 @@ function RunnerCard({
   const size = shirtSizes.find((s) => s.id === shirtSizeId)
   // คนแรกมักเป็นคนกรอกเอง ให้เบราว์เซอร์เติมชื่อ/เบอร์ได้ คนอื่นปิดไว้กันเติมผิดคน
   const auto = (value: string) => (index === 0 ? value : "off")
-  const today = new Date().toISOString().slice(0, 10)
   const headingId = `runner-${index}-heading`
 
   return (
@@ -296,11 +307,20 @@ function RunnerCard({
       />
 
       <SectionTitle>ข้อมูลส่วนตัว</SectionTitle>
-      <SelectField
-        label="คำนำหน้า"
-        options={lookups.titles.map((t) => ({ value: t.id, label: t.nameTh }))}
-        error={e?.titleId?.message}
-        {...register(`${name}.titleId`, { setValueAs: toNumber })}
+      <Controller
+        control={control}
+        name={`${name}.titleId`}
+        render={({ field }) => (
+          <SelectField
+            label="คำนำหน้า"
+            options={lookups.titles.map((t) => ({ value: t.id, label: t.nameTh }))}
+            error={e?.titleId?.message}
+            value={field.value}
+            onChange={field.onChange}
+            onBlur={field.onBlur}
+            ref={field.ref}
+          />
+        )}
       />
       <div className="grid gap-4 sm:grid-cols-2">
         <TextField
@@ -317,19 +337,38 @@ function RunnerCard({
         />
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
-        <TextField
-          label="วันเกิด"
-          type="date"
-          max={today}
-          autoComplete={auto("bday")}
-          error={e?.birthDate?.message}
-          {...register(`${name}.birthDate`)}
+        <Controller
+          control={control}
+          name={`${name}.birthDate`}
+          render={({ field }) => (
+            <DateField
+              label="วันเกิด"
+              placeholder="เลือกวันเกิด"
+              min={birthDateRange.min}
+              max={birthDateRange.max}
+              defaultMonth={birthDateRange.defaultMonth}
+              error={e?.birthDate?.message}
+              value={field.value}
+              onChange={field.onChange}
+              onBlur={field.onBlur}
+              ref={field.ref}
+            />
+          )}
         />
-        <SelectField
-          label="สัญชาติ"
-          options={lookups.nationalities.map((n) => ({ value: n.id, label: n.nameTh }))}
-          error={e?.nationalityId?.message}
-          {...register(`${name}.nationalityId`, { setValueAs: toNumber })}
+        <Controller
+          control={control}
+          name={`${name}.nationalityId`}
+          render={({ field }) => (
+            <SelectField
+              label="สัญชาติ"
+              options={lookups.nationalities.map((n) => ({ value: n.id, label: n.nameTh }))}
+              error={e?.nationalityId?.message}
+              value={field.value}
+              onChange={field.onChange}
+              onBlur={field.onBlur}
+              ref={field.ref}
+            />
+          )}
         />
       </div>
       <Controller
@@ -402,11 +441,20 @@ function RunnerCard({
         {...register(`${name}.emergencyContact.name`)}
       />
       <div className="grid gap-4 sm:grid-cols-2">
-        <SelectField
-          label="ความสัมพันธ์"
-          options={lookups.emergencyRelations.map((r) => ({ value: r.id, label: r.nameTh }))}
-          error={e?.emergencyContact?.relationId?.message}
-          {...register(`${name}.emergencyContact.relationId`, { setValueAs: toNumber })}
+        <Controller
+          control={control}
+          name={`${name}.emergencyContact.relationId`}
+          render={({ field }) => (
+            <SelectField
+              label="ความสัมพันธ์"
+              options={lookups.emergencyRelations.map((r) => ({ value: r.id, label: r.nameTh }))}
+              error={e?.emergencyContact?.relationId?.message}
+              value={field.value}
+              onChange={field.onChange}
+              onBlur={field.onBlur}
+              ref={field.ref}
+            />
+          )}
         />
         <TextField
           label="เบอร์โทร"
@@ -421,11 +469,20 @@ function RunnerCard({
 
       <SectionTitle>ข้อมูลสุขภาพ</SectionTitle>
       <div className="grid gap-4 sm:grid-cols-[10rem_1fr]">
-        <SelectField
-          label="กรุ๊ปเลือด"
-          options={lookups.bloodTypes.map((b) => ({ value: b.id, label: b.nameTh }))}
-          error={e?.bloodTypeId?.message}
-          {...register(`${name}.bloodTypeId`, { setValueAs: toNumber })}
+        <Controller
+          control={control}
+          name={`${name}.bloodTypeId`}
+          render={({ field }) => (
+            <SelectField
+              label="กรุ๊ปเลือด"
+              options={lookups.bloodTypes.map((b) => ({ value: b.id, label: b.nameTh }))}
+              error={e?.bloodTypeId?.message}
+              value={field.value}
+              onChange={field.onChange}
+              onBlur={field.onBlur}
+              ref={field.ref}
+            />
+          )}
         />
         <TextField
           label="โรคประจำตัว / แพ้ยา"

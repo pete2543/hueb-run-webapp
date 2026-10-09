@@ -28,7 +28,6 @@ type Options = {
   shippingOptions: ShippingOption[]
 }
 
-const toNumber = (v: unknown) => (v === "" || v == null ? undefined : Number(v))
 const loadAlert = () => import("@/lib/alert")
 
 export function SummaryStep(props: Options) {
@@ -549,9 +548,9 @@ function AddressCard({ form }: { form: ReturnType<typeof useForm<SummaryStepValu
         {districts.length > 1 ? (
           <SelectField
             label="อำเภอ/เขต"
-            value={district ?? ""}
-            onChange={(event) => {
-              setDistrict(event.target.value || undefined)
+            value={district}
+            onChange={(next) => {
+              setDistrict(next)
               setValue("shippingAddress.subdistrictId", undefined!)
             }}
             options={districts.map((d) => ({ value: d, label: d }))}
@@ -559,12 +558,22 @@ function AddressCard({ form }: { form: ReturnType<typeof useForm<SummaryStepValu
         ) : (
           <ReadOnlyField label="อำเภอ/เขต" value={district} />
         )}
-        <SelectField
-          label="ตำบล/แขวง"
-          disabled={!subdistricts.length}
-          options={subdistricts.map((m) => ({ value: m.subdistrictId, label: m.subdistrict }))}
-          error={e?.subdistrictId?.message}
-          {...register("shippingAddress.subdistrictId", { setValueAs: toNumber })}
+        <Controller
+          control={control}
+          name="shippingAddress.subdistrictId"
+          render={({ field }) => (
+            <SelectField
+              label="ตำบล/แขวง"
+              placeholder={subdistricts.length ? "เลือก" : "กรอกรหัสไปรษณีย์ก่อน"}
+              disabled={!subdistricts.length}
+              options={subdistricts.map((m) => ({ value: m.subdistrictId, label: m.subdistrict }))}
+              error={e?.subdistrictId?.message}
+              value={field.value}
+              onChange={field.onChange}
+              onBlur={field.onBlur}
+              ref={field.ref}
+            />
+          )}
         />
       </div>
     </Card>
