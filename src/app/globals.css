@@ -3,54 +3,61 @@
 @import "shadcn/tailwind.css";
 
 /*
- * Design tokens จาก docs/ui-flow.md (ธีมมืดธีมเดียว)
+ * Design tokens ธีม HUEB RUN (docs/ui-flow.md) ธีมสว่าง
  * ตั้งชื่อตาม shadcn/ui เพื่อให้คอมโพเนนต์ใน components/ui ใช้สีของงานได้ทันที
- * ใช้ใน Tailwind เป็น bg-background, bg-card, text-muted-foreground, bg-primary, text-warning ฯลฯ
+ * ใช้ใน Tailwind เป็น bg-background, bg-primary, text-muted-foreground, bg-gold ฯลฯ
+ *
+ * สีหลัก 5 สี: Royal Blue #124BC5 · Deep Navy #102A56 · White #FFFFFF · Ice Blue #EAF2FF · Warm Gold #F3C65B
+ * สีอื่น (border, muted-foreground, warning, caution) แตกมาจากสีหลักเพื่อให้อ่านง่ายบนพื้นขาว
+ * Warm Gold ห้ามใช้เป็นตัวอักษรบนพื้นขาว (contrast ต่ำ) ใช้เป็นพื้น/แถบ/ไฮไลต์ คู่กับตัวอักษร Deep Navy
  */
 :root {
-  --background: #0b1220;
-  --foreground: #f3f6fb;
+  --background: #ffffff;
+  --foreground: #102a56;
 
-  --card: #141d31;
-  --card-foreground: #f3f6fb;
-  --popover: #141d31;
-  --popover-foreground: #f3f6fb;
-  --surface-raised: #1b2740;
+  --card: #ffffff;
+  --card-foreground: #102a56;
+  --popover: #ffffff;
+  --popover-foreground: #102a56;
+  --surface-raised: #eaf2ff;
 
-  --primary: #c6f432;
-  --primary-foreground: #0b1220;
-  --secondary: #1b2740;
-  --secondary-foreground: #f3f6fb;
-  --muted: #1b2740;
-  --muted-foreground: #a3b0c8;
-  --accent: #1b2740;
-  --accent-foreground: #f3f6fb;
+  --primary: #124bc5;
+  --primary-foreground: #ffffff;
+  --secondary: #eaf2ff;
+  --secondary-foreground: #102a56;
+  --muted: #eaf2ff;
+  --muted-foreground: #4a5f85;
+  --accent: #eaf2ff;
+  --accent-foreground: #102a56;
 
-  --warning: #ff7a59;
-  --caution: #ffc857;
-  --destructive: #ff7a59;
+  --gold: #f3c65b;
+  --gold-foreground: #102a56;
 
-  --border: #2a3857;
-  --input: #2a3857;
-  --ring: #c6f432;
+  --warning: #d9480f;
+  --caution: #b7791f;
+  --destructive: #d9480f;
+
+  --border: #d3e0f7;
+  --input: #d3e0f7;
+  --ring: #124bc5;
   --radius: 1rem;
 
-  --chart-1: #c6f432;
-  --chart-2: #ffc857;
-  --chart-3: #ff7a59;
-  --chart-4: #a3b0c8;
-  --chart-5: #2a3857;
+  --chart-1: #124bc5;
+  --chart-2: #f3c65b;
+  --chart-3: #102a56;
+  --chart-4: #7c9be0;
+  --chart-5: #d3e0f7;
 
-  --sidebar: #141d31;
-  --sidebar-foreground: #f3f6fb;
-  --sidebar-primary: #c6f432;
-  --sidebar-primary-foreground: #0b1220;
-  --sidebar-accent: #1b2740;
-  --sidebar-accent-foreground: #f3f6fb;
-  --sidebar-border: #2a3857;
-  --sidebar-ring: #c6f432;
+  --sidebar: #eaf2ff;
+  --sidebar-foreground: #102a56;
+  --sidebar-primary: #124bc5;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #ffffff;
+  --sidebar-accent-foreground: #102a56;
+  --sidebar-border: #d3e0f7;
+  --sidebar-ring: #124bc5;
 
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 @theme inline {
@@ -72,6 +79,8 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-gold: var(--gold);
+  --color-gold-foreground: var(--gold-foreground);
   --color-warning: var(--warning);
   --color-caution: var(--caution);
   --color-destructive: var(--destructive);

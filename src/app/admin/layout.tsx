@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { Logo } from "@/components/logo"
 import { AdminSidebar } from "@/features/admin/components/admin-sidebar"
 
 export const metadata: Metadata = {
@@ -11,11 +12,9 @@ export default function AdminLayout({ children }: LayoutProps<"/admin">) {
   return (
     <div className="flex flex-1">
       <aside className="sticky top-0 flex h-dvh w-60 shrink-0 flex-col gap-6 border-r bg-sidebar p-4">
-        <span className="px-3 font-heading text-lg font-bold tracking-widest">
-          FUN<span className="text-primary">RUN</span>
-          <span className="ml-2 text-xs font-medium tracking-normal text-muted-foreground">
-            Admin
-          </span>
+        <span className="flex items-baseline gap-2 px-3">
+          <Logo />
+          <span className="text-xs font-medium text-muted-foreground">Admin</span>
         </span>
         <AdminSidebar />
       </aside>

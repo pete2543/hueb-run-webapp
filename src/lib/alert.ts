@@ -4,18 +4,20 @@ import Swal from "sweetalert2"
  * SweetAlert2 ที่ตั้งสีตามธีมของงานไว้แล้ว เรียกใช้ได้เฉพาะใน client component
  *   await alert.fire({ icon: "success", title: "ส่งสลิปแล้ว" })
  *   const { isConfirmed } = await alert.fire({ title: "ยืนยัน?", showCancelButton: true })
+ *
+ * สีอ้างอิง CSS variable ใน globals.css เปลี่ยนธีมที่นั่นที่เดียว
  */
 export const alert = Swal.mixin({
-  background: "#141d31",
-  color: "#f3f6fb",
-  confirmButtonColor: "#c6f432",
-  cancelButtonColor: "#2a3857",
+  background: "var(--card)",
+  color: "var(--foreground)",
+  confirmButtonColor: "var(--primary)",
+  cancelButtonColor: "var(--muted)",
   confirmButtonText: "ตกลง",
   cancelButtonText: "ยกเลิก",
   customClass: {
-    confirmButton: "!text-[#0b1220] !font-semibold !min-h-11 !rounded-full !px-6",
-    cancelButton: "!min-h-11 !rounded-full !px-6",
-    popup: "!rounded-2xl !border !border-[#2a3857]",
+    confirmButton: "!min-h-11 !rounded-full !px-6 !font-semibold !text-primary-foreground",
+    cancelButton: "!min-h-11 !rounded-full !px-6 !text-foreground",
+    popup: "!rounded-2xl !border !border-border",
   },
 })
 
@@ -26,6 +28,7 @@ export const toast = Swal.mixin({
   showConfirmButton: false,
   timer: 3000,
   timerProgressBar: true,
-  background: "#1b2740",
-  color: "#f3f6fb",
+  background: "var(--card)",
+  color: "var(--foreground)",
+  customClass: { popup: "!border !border-border" },
 })
