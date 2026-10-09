@@ -17,6 +17,8 @@ export type RegistrationDraft = {
   acceptedPdpa?: boolean
   /** ขั้นตอนที่ 3: ผู้ติดต่อ วิธีรับของ ที่อยู่ โค้ดส่วนลด */
   summary?: Partial<SummaryStepValues>
+  /** ใบสมัครที่สร้างแล้วและจองที่ไว้ ใช้กันกดสร้างซ้ำเมื่อย้อนกลับมาหน้าสรุป */
+  pendingOrder?: { orderId: string; orderNo: string; expiresAt: string }
 }
 
 const storageKey = "hueb-run:registration-draft"
@@ -72,4 +74,15 @@ export function setFirstRunnerDistance(distanceId: number) {
   const current = getDraft()
   const [first, ...rest] = current.runners
   setDraft({ ...current, runners: [{ ...first, distanceId }, ...rest] })
+}
+
+/** ล้างทั้งหมดหลังชำระเงินสำเร็จ (ข้อมูลส่วนบุคคลไม่ควรค้างในเครื่อง) */
+export function clearDraft() {
+  try {
+    sessionStorage.removeItem(storageKey)
+  } catch {
+    // ไม่มี sessionStorage ก็ไม่เป็นไร
+  }
+  draft = emptyDraft
+  listeners.forEach((listener) => listener())
 }

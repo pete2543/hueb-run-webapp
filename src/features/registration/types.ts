@@ -85,3 +85,30 @@ export type CreatedOrder = {
 export type ActionResult<T> =
   | { ok: true; data: T }
   | { ok: false; code: string; message: string; details?: Record<string, unknown> }
+
+/** ตรงกับ enum ใน docs/db-schema/Entities.cs */
+export type OrderStatus = "Pending" | "Paid" | "Expired" | "Cancelled" | "Refunded"
+export type PaymentStatus = "Pending" | "Verifying" | "NeedsReview" | "Verified" | "Rejected"
+
+/** GET /orders/{orderId} (เฉพาะที่หน้าชำระเงินใช้) */
+export type OrderSummary = {
+  orderId: string
+  orderNo: string
+  status: OrderStatus
+  paymentStatus: PaymentStatus
+  total: number
+  payableAmount: number
+  expiresAt: string
+  /** เหตุผลเมื่อสลิปไม่ผ่าน */
+  rejectReason: string | null
+}
+
+/** GET /orders/{orderId}/payment */
+export type PaymentInfo = {
+  /** ข้อความใน QR (ฝั่ง API สร้างตามมาตรฐาน PromptPay/EMVCo) */
+  promptPayPayload: string
+  accountName: string
+  payableAmount: number
+  /** true = QR ตัวอย่างระหว่างพัฒนา สแกนจ่ายไม่ได้ */
+  isDemo: boolean
+}

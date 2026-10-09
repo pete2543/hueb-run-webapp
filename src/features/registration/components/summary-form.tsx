@@ -30,6 +30,11 @@ type Options = {
 
 const loadAlert = () => import("@/lib/alert")
 
+/** ใบสมัครที่จองไว้ยังไม่หมดเวลา */
+function isStillReserved(expiresAt: string) {
+  return Date.parse(expiresAt) > Date.now()
+}
+
 export function SummaryStep(props: Options) {
   const ready = useDraftReady()
   if (!ready) return <div className="h-[40rem] animate-pulse rounded-2xl bg-muted" />
@@ -185,6 +190,28 @@ function SummaryForm({
 
   // ---------- ส่งออเดอร์ ----------
   const onValid = async (values: SummaryStepValues) => {
+    // มีใบสมัครที่จองที่ไว้และยังไม่หมดเวลา: ถามก่อน กันจองซ้ำ (ใบเก่าจะกันที่ไว้จนหมดเวลา)
+    const pending = getDraft().pendingOrder
+    if (pending && isStillReserved(pending.expiresAt)) {
+      const { alert } = await loadAlert()
+      const choice = await alert.fire({
+        icon: "info",
+        title: "มีใบสมัครที่รอชำระอยู่",
+        text: `ใบสมัคร ${pending.orderNo} จองที่ไว้แล้ว ไปชำระใบเดิมได้เลย หรือสร้างใบใหม่ถ้าแก้ข้อมูลแล้ว`,
+        showDenyButton: true,
+        showCancelButton: true,
+        confirmButtonText: "ไปชำระใบเดิม",
+        denyButtonText: "สร้างใบใหม่",
+        cancelButtonText: "ยกเลิก",
+        denyButtonColor: "var(--foreground)",
+      })
+      if (choice.isConfirmed) {
+        router.push(`/register/payment/${pending.orderId}`)
+        return
+      }
+      if (!choice.isDenied) return
+    }
+
     const result = await createOrder({
       contact: values.contact,
       runners,
@@ -196,7 +223,9 @@ function SummaryForm({
       acceptedPdpa: true,
     })
     if (result.ok) {
-      router.push(`/register/payment/${result.data.orderId}`)
+      const { orderId, orderNo, expiresAt } = result.data
+      setDraft({ ...getDraft(), pendingOrder: { orderId, orderNo, expiresAt } })
+      router.push(`/register/payment/${orderId}`)
       return
     }
 

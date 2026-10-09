@@ -10,7 +10,8 @@ import {
   mockZipIndex,
 } from "./mocks"
 import { createOrderSchema, normalizePhone, type CreateOrderPayload } from "./schema"
-import type { ActionResult, CreatedOrder, PromoResult, ZipMatch } from "./types"
+import { countMockOrders, getMockOrder, markMockSlip, saveMockOrder } from "./mock-orders"
+import type { ActionResult, CreatedOrder, OrderSummary, PromoResult, ZipMatch } from "./types"
 
 /**
  * Server actions ของขั้นตอนสมัคร: หน้าเว็บเรียกได้ตรง ๆ โดยไม่ต้องเปิด API ให้ browser
@@ -67,10 +68,6 @@ export async function lookupZip(zipCode: string): Promise<ActionResult<ZipMatch[
   return callApi(() => apiFetch<ZipMatch[]>(`/geo/zip/${zipCode}`))
 }
 
-/** เก็บออเดอร์จำลองไว้ในหน่วยความจำ ให้หน้าชำระเงินอ่านต่อได้ระหว่างพัฒนา */
-const mockOrders = ((globalThis as { __mockOrders?: Map<string, CreatedOrder> }).__mockOrders ??=
-  new Map())
-
 export async function createOrder(input: CreateOrderPayload): Promise<ActionResult<CreatedOrder>> {
   const parsed = createOrderSchema.safeParse(input)
   if (!parsed.success) return fail("VALIDATION", "ข้อมูลไม่ครบหรือไม่ถูกต้อง")
@@ -126,11 +123,55 @@ export async function createOrder(input: CreateOrderPayload): Promise<ActionResu
   const satang = (Math.floor(Math.random() * 99) + 1) / 100
   const order: CreatedOrder = {
     orderId: crypto.randomUUID(),
-    orderNo: `RUN27-${String(mockOrders.size + 123).padStart(6, "0")}`,
+    orderNo: `RUN27-${String(countMockOrders() + 123).padStart(6, "0")}`,
     total,
     payableAmount: Math.round((total + satang) * 100) / 100,
     expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
   }
-  mockOrders.set(order.orderId, order)
+  saveMockOrder({
+    ...order,
+    status: "Pending",
+    paymentStatus: "Pending",
+    rejectReason: null,
+  })
   return { ok: true, data: order }
+}
+
+/** สถานะล่าสุดของออเดอร์ หน้าชำระเงินเรียกซ้ำระหว่างรอตรวจสลิป */
+export async function getOrderStatus(orderId: string): Promise<ActionResult<OrderSummary>> {
+  if (useMock) {
+    const order = getMockOrder(orderId)
+    return order ? { ok: true, data: order } : fail("NOT_FOUND", "ไม่พบใบสมัคร")
+  }
+  return callApi(() => apiFetch<OrderSummary>(`/orders/${orderId}`, { cache: "no-store" }))
+}
+
+const maxSlipBytes = 4 * 1024 * 1024
+const slipTypes = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"]
+
+/** POST /orders/{orderId}/payment/slip (multipart) */
+export async function uploadSlip(
+  orderId: string,
+  formData: FormData,
+): Promise<ActionResult<OrderSummary>> {
+  const file = formData.get("slip")
+  if (!(file instanceof File) || file.size === 0) return fail("VALIDATION", "กรุณาเลือกรูปสลิป")
+  if (!slipTypes.includes(file.type))
+    return fail("VALIDATION", "รองรับเฉพาะไฟล์รูป (JPG, PNG, WEBP, HEIC)")
+  if (file.size > maxSlipBytes) return fail("VALIDATION", "ไฟล์ใหญ่เกิน 4MB")
+
+  if (useMock) {
+    const order = getMockOrder(orderId)
+    if (!order) return fail("NOT_FOUND", "ไม่พบใบสมัคร")
+    if (order.status === "Expired") return fail("ORDER_EXPIRED", "หมดเวลาชำระเงินแล้ว")
+    if (order.status === "Paid") return { ok: true, data: order }
+    markMockSlip(orderId, formData.get("fileName")?.toString() ?? file.name)
+    return { ok: true, data: getMockOrder(orderId)! }
+  }
+
+  const body = new FormData()
+  body.set("slip", file)
+  return callApi(() =>
+    apiFetch<OrderSummary>(`/orders/${orderId}/payment/slip`, { method: "POST", body }),
+  )
 }
