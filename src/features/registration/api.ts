@@ -1,12 +1,13 @@
 import { cacheLife } from "next/cache"
 import { ApiError, apiFetch } from "@/lib/api/client"
 import { mockDistances, mockEvent, mockLookups, mockShippingOptions, mockShirtSizes } from "./mocks"
-import { getMockOrder } from "./mock-orders"
+import { getMockOrder, getMockTickets } from "./mock-orders"
 import type {
   Distance,
   EventInfo,
   Lookups,
   OrderSummary,
+  OrderTickets,
   PaymentInfo,
   ShippingOption,
   ShirtSize,
@@ -70,4 +71,15 @@ export async function getPaymentInfo(order: OrderSummary): Promise<PaymentInfo> 
     cache: "no-store",
   })
   return { ...info, isDemo: false }
+}
+
+/** null = ยังไม่จ่าย/ไม่พบ */
+export async function getTickets(orderId: string): Promise<OrderTickets | null> {
+  if (useMock) return getMockTickets(orderId)
+  try {
+    return await apiFetch<OrderTickets>(`/orders/${orderId}/tickets`, { cache: "no-store" })
+  } catch (error) {
+    if (error instanceof ApiError && (error.status === 404 || error.status === 409)) return null
+    throw error
+  }
 }

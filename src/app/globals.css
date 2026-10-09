@@ -131,3 +131,29 @@
     @apply font-heading;
   }
 }
+
+/* กระดาษสีฉลองหน้าสมัครสำเร็จ (ใช้กับ .confetti-piece ตั้ง --x --r --delay ต่อชิ้น) */
+@keyframes confetti-burst {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) rotate(0deg) scale(0.6);
+  }
+  12% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--x), 140px) rotate(var(--r)) scale(1);
+  }
+}
+
+@layer components {
+  .confetti-piece {
+    animation: confetti-burst 1.8s cubic-bezier(0.22, 1, 0.36, 1) var(--delay, 0s) both;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .confetti-piece {
+      display: none;
+    }
+  }
+}

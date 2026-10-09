@@ -12,6 +12,8 @@ export type EventInfo = {
   venue: string | null
   registrationOpensAt: string | null
   registrationClosesAt: string | null
+  /** วัน/สถานที่รับบิบ เช่น "18 ม.ค. 2570 · ลานหน้าหอประชุม" */
+  bibPickup: string | null
 }
 
 /** GET /events/{slug}/distances */
@@ -111,4 +113,24 @@ export type PaymentInfo = {
   payableAmount: number
   /** true = QR ตัวอย่างระหว่างพัฒนา สแกนจ่ายไม่ได้ */
   isDemo: boolean
+}
+
+/** บัตรนักวิ่ง 1 ใบ (GET /orders/{orderId}/tickets เมื่อ Paid) */
+export type Ticket = {
+  registrationId: number
+  bibNumber: string
+  firstName: string
+  lastName: string
+  distanceName: string
+  distanceKm: number
+  shirtSize: string
+  /** ใส่ใน QR ให้สตาฟสแกนตอนรับบิบ */
+  checkInToken: string
+}
+
+export type OrderTickets = {
+  orderNo: string
+  total: number
+  deliveryType: "Pickup" | "Post"
+  tickets: Ticket[]
 }

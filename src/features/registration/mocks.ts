@@ -8,6 +8,7 @@ export const mockEvent: EventInfo = {
   venue: null,
   registrationOpensAt: null,
   registrationClosesAt: null,
+  bibPickup: null,
 }
 
 /** ข้อมูลจำลองตามเดโม (docs/design/Distances.dc.html) */

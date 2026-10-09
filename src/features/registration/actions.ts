@@ -133,6 +133,13 @@ export async function createOrder(input: CreateOrderPayload): Promise<ActionResu
     status: "Pending",
     paymentStatus: "Pending",
     rejectReason: null,
+    runners: payload.runners.map(({ firstName, lastName, distanceId, shirtSizeId }) => ({
+      firstName,
+      lastName,
+      distanceId,
+      shirtSizeId,
+    })),
+    shippingOptionId: payload.shippingOptionId,
   })
   return { ok: true, data: order }
 }
