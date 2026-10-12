@@ -1,6 +1,6 @@
 import "server-only"
 import { cookies } from "next/headers"
-import { redirect } from "next/navigation"
+import { redirect, unstable_rethrow } from "next/navigation"
 import { ApiError, apiFetch } from "@/lib/api/client"
 import { sessionCookie, verifySession } from "../auth/session"
 import type { AdminSession } from "../auth/session"
@@ -46,6 +46,8 @@ export async function adminEventId(): Promise<number> {
 
 /** แปลง error ของ API เป็นข้อความไทยสำหรับแสดงให้แอดมิน */
 export function describeError(error: unknown): string {
+  // redirect()/notFound() ที่โยนมาจาก adminFetch ต้องไม่ถูกกลืนใน catch ของหน้า
+  unstable_rethrow(error)
   if (error instanceof MockModeError) return error.message
   if (error instanceof ApiError) {
     if (error.status === 403) return "บัญชีนี้ไม่มีสิทธิ์ทำรายการนี้"

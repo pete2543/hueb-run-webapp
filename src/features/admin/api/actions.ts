@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { adminFetch, describeError } from "./server"
-import type { AdminUserDto, EventSettings, ListKind, PaymentItem } from "./types"
+import type { AdminUserDto, EventSettings, ListKind, PaymentItem, Promo } from "./types"
 import { ApiError } from "@/lib/api/client"
 
 export type ActionResult = { ok: true } | { ok: false; error: string }
@@ -107,6 +107,10 @@ function settingsError(error: unknown): string {
         return "ชื่อ/ไซซ์/ตัวอักษรบิบซ้ำกับรายการอื่น"
       case "NOT_READY_TO_PUBLISH":
         return `เผยแพร่ไม่ได้ ยังขาด: ${Array.isArray(d?.missing) ? d.missing.join(", ") : "ระยะ/ไซซ์/วิธีรับของที่เปิดใช้"}`
+      case "PROMO_CODE_TAKEN":
+        return "โค้ดนี้ถูกใช้แล้ว (ไม่สนตัวพิมพ์เล็ก/ใหญ่)"
+      case "MAX_USES_BELOW_USED":
+        return "จำนวนสิทธิ์ต่ำกว่าที่ถูกใช้ไปแล้วไม่ได้"
       case "VALIDATION_ERROR": {
         const first = d && Object.entries(d).flatMap(([k, v]) => (Array.isArray(v) ? v.map((m) => `${k}: ${m}`) : []))[0]
         if (first) return first
@@ -145,6 +149,23 @@ export async function saveList(
     })
     revalidatePath("/admin/quota")
     revalidatePath("/admin")
+    return { ok: true, data }
+  } catch (error) {
+    return { ok: false, error: settingsError(error) }
+  }
+}
+
+export async function savePromo(
+  eventId: number,
+  promoId: number | null,
+  body: Record<string, unknown>,
+): Promise<SaveResult<Promo>> {
+  try {
+    const data = await adminFetch<Promo>(
+      promoId == null ? `/events/${eventId}/promos` : `/events/${eventId}/promos/${promoId}`,
+      { method: promoId == null ? "POST" : "PUT", body: JSON.stringify(body) },
+    )
+    revalidatePath("/admin/promos")
     return { ok: true, data }
   } catch (error) {
     return { ok: false, error: settingsError(error) }

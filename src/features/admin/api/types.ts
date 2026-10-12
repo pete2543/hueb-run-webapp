@@ -163,3 +163,16 @@ export type EventSettings = {
 }
 
 export type ListKind = "distances" | "shirt-sizes" | "shipping-options"
+
+export type Promo = {
+  id: number
+  code: string
+  type: "Percent" | "Fixed"
+  value: number
+  minOrderAmount: number | null
+  startsAt: string | null
+  endsAt: string | null
+  maxUses: number | null
+  usedCount: number
+  isActive: boolean
+}
