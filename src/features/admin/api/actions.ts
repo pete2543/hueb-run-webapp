@@ -171,3 +171,19 @@ export async function savePromo(
     return { ok: false, error: settingsError(error) }
   }
 }
+
+export async function setTracking(orderId: string, trackingNo: string): Promise<ActionResult> {
+  try {
+    await adminFetch<{ trackingNo: string | null }>(`/orders/${orderId}/tracking`, {
+      method: "PATCH",
+      body: JSON.stringify({ trackingNo: trackingNo.trim() }),
+    })
+  } catch (error) {
+    if (error instanceof ApiError && error.code === "TRACKING_NOT_ALLOWED") {
+      return { ok: false, error: "ใส่เลขพัสดุได้เฉพาะออเดอร์ที่จ่ายแล้วและเลือกส่งไปรษณีย์" }
+    }
+    return fail(error)
+  }
+  revalidatePath(`/admin/orders/${orderId}`)
+  return { ok: true }
+}

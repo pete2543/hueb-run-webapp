@@ -3,11 +3,12 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { Suspense } from "react"
-import { adminFetch } from "@/features/admin/api/server"
+import { adminFetch, adminSession } from "@/features/admin/api/server"
 import type { OrderDetail } from "@/features/admin/api/types"
 import { ApiError } from "@/lib/api/client"
 import { AdminCard } from "@/features/admin/components/admin-page"
 import { ApiNotice, StatusBadge } from "@/features/admin/components/admin-ui"
+import { TrackingForm } from "@/features/admin/components/tracking-form"
 import { baht, dateTime } from "@/features/admin/format"
 
 export const metadata: Metadata = { title: "รายละเอียดใบสมัคร" }
@@ -44,6 +45,9 @@ async function OrderContent({ params }: { params: PageProps<"/admin/orders/[id]"
     return <ApiNotice error={error} />
   }
 
+  const { role } = await adminSession()
+  const canTrack = (role === "SuperAdmin" || role === "Organizer") && o.status === "Paid" && o.shipping.type === "Post"
+
   return (
     <>
       <div className="flex flex-wrap items-center gap-3">
@@ -73,7 +77,7 @@ async function OrderContent({ params }: { params: PageProps<"/admin/orders/[id]"
           <h2 className="mb-2 font-heading text-lg font-semibold">การรับของ</h2>
           <dl className="divide-y">
             <Row label="วิธีรับ" value={`${o.shipping.name} (${o.shipping.type === "Post" ? "ส่งไปรษณีย์" : "รับเอง"})`} />
-            <Row label="เลขพัสดุ" value={o.shipping.trackingNo} />
+            <Row label="เลขพัสดุ" value={canTrack ? null : o.shipping.trackingNo} />
             {o.shipping.type === "Post" ? (
               <>
                 <Row label="ผู้รับ" value={o.shipping.shipName} />
@@ -82,6 +86,7 @@ async function OrderContent({ params }: { params: PageProps<"/admin/orders/[id]"
               </>
             ) : null}
           </dl>
+          {canTrack ? <TrackingForm orderId={o.orderId} initial={o.shipping.trackingNo} /> : null}
         </AdminCard>
       </div>
 

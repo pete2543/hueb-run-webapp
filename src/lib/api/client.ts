@@ -3,7 +3,7 @@
  * error ทุกตัวมีรูป { code, message, details } เช่น QUOTA_FULL, ORDER_EXPIRED
  */
 
-const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5000/api/v1"
+export const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5000/api/v1"
 
 export class ApiError extends Error {
   constructor(

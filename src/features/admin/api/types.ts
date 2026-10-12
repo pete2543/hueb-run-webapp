@@ -176,3 +176,24 @@ export type Promo = {
   usedCount: number
   isActive: boolean
 }
+
+export type RunnerItem = {
+  registrationId: number
+  orderId: string
+  orderNo: string
+  firstName: string
+  lastName: string
+  distance: string
+  shirtSize: string
+  bibNumber: string | null
+  teamName: string | null
+  checkedInAt: string | null
+  /** กลุ่มอ่อนไหว: Finance ได้ null */
+  gender: string | null
+  birthDate: string | null
+  phone: string | null
+  email: string | null
+  emergencyContactName: string | null
+  emergencyContactPhone: string | null
+  medicalNote: string | null
+}
