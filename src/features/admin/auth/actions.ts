@@ -5,6 +5,7 @@ import { redirect } from "next/navigation"
 import { z } from "zod"
 import { ApiError, apiFetch } from "@/lib/api/client"
 import { homeFor, type AdminRole } from "./access"
+import type { LoginResponse } from "../api/types"
 import { mockAdminPassword, mockAdmins } from "./mock-users"
 import { sessionCookie, sessionMaxAgeSeconds, signSession } from "./session"
 
@@ -22,22 +23,51 @@ const loginSchema = z.object({
 
 const useMock = process.env.API_MOCK !== "false"
 
-type AdminUser = { id: string; name: string; email: string; role: AdminRole }
+type AdminUser = {
+  id: string
+  name: string
+  email: string
+  role: AdminRole
+  eventIds?: number[]
+  token?: string
+  /** อายุ session เป็นวินาที (ตาม token ของ API) */
+  maxAge?: number
+}
 
-async function authenticate(email: string, password: string): Promise<AdminUser | null> {
+type AuthResult = { user: AdminUser } | { error: string }
+
+async function authenticate(email: string, password: string): Promise<AuthResult> {
+  const invalid = { error: "อีเมลหรือรหัสผ่านไม่ถูกต้อง" }
   if (useMock) {
     const user = mockAdmins.find((u) => u.email === email.toLowerCase())
     const expected = mockAdminPassword()
-    return user && expected && password === expected ? user : null
+    return user && expected && password === expected ? { user } : invalid
   }
   try {
-    return await apiFetch<AdminUser>("/admin/auth/login", {
+    const res = await apiFetch<LoginResponse>("/admin/auth/login", {
       method: "POST",
       body: JSON.stringify({ email, password }),
+      cache: "no-store",
     })
+    const maxAge = Math.floor((Date.parse(res.expiresAt) - Date.now()) / 1000)
+    return {
+      user: {
+        id: res.user.id,
+        name: res.user.name,
+        email: res.user.email,
+        role: res.user.role,
+        eventIds: res.user.eventIds,
+        token: res.token,
+        maxAge: Math.min(Math.max(maxAge, 60), sessionMaxAgeSeconds),
+      },
+    }
   } catch (error) {
-    if (error instanceof ApiError && (error.status === 401 || error.status === 400)) return null
-    throw error
+    if (error instanceof ApiError) {
+      if (error.status === 401 || error.status === 400) return invalid
+      if (error.status === 429) return { error: "ลองบ่อยเกินไป กรุณารอสักครู่แล้วลองใหม่" }
+    }
+    console.error("admin login failed", error)
+    return { error: "เชื่อมต่อระบบไม่ได้ กรุณาลองใหม่อีกครั้ง" }
   }
 }
 
@@ -55,21 +85,28 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
   }
 
   // TODO: จำกัดจำนวนครั้งที่ลองผิด (rate limit) ฝั่ง API
-  const user = await authenticate(parsed.data.email, parsed.data.password)
-  if (!user) return { email, error: "อีเมลหรือรหัสผ่านไม่ถูกต้อง" }
+  const result = await authenticate(parsed.data.email, parsed.data.password)
+  if ("error" in result) return { email, error: result.error }
+  const { user } = result
 
-  const token = await signSession({
-    userId: user.id,
-    name: user.name,
-    email: user.email,
-    role: user.role,
-  })
+  const maxAge = user.maxAge ?? sessionMaxAgeSeconds
+  const token = await signSession(
+    {
+      userId: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      eventIds: user.eventIds,
+      token: user.token,
+    },
+    maxAge,
+  )
   ;(await cookies()).set(sessionCookie, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/admin",
-    maxAge: sessionMaxAgeSeconds,
+    maxAge,
   })
   redirect(safeNext(parsed.data.next) ?? homeFor(user.role))
 }

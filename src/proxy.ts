@@ -12,6 +12,9 @@ export async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl
   const session = await verifySession(request.cookies.get(sessionCookie)?.value)
 
+  // เคลียร์ session ที่ API ไม่รับแล้ว (ลบ cookie ใน server component ไม่ได้ จึงผ่าน route handler)
+  if (pathname === "/admin/session-expired") return NextResponse.next()
+
   if (pathname === "/admin/login") {
     return session
       ? NextResponse.redirect(new URL(homeFor(session.role), request.url))

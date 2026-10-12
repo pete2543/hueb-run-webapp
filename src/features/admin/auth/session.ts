@@ -3,7 +3,8 @@ import type { AdminRole } from "./access"
 /**
  * session ของหลังบ้าน: cookie ที่ลงลายเซ็น HMAC-SHA256 (Web Crypto ใช้ได้ทั้งใน proxy และ server)
  * เก็บแค่ข้อมูลที่จำเป็นต่อการแสดงผลและตรวจสิทธิ์ ไม่เก็บข้อมูลอ่อนไหว
- * เมื่อมี API จริง ให้เก็บ token ที่ API ออกให้แทน แล้วตรวจกับ API
+ * โหมด API จริง: เก็บ JWT ที่ API ออกให้ใน session (cookie httpOnly) แล้วส่ง Bearer ทุก request
+ * สิทธิ์จริงตัดสินที่ API ทุกครั้ง ค่า role ใน session ใช้แค่ซ่อนเมนู/กันหน้า
  */
 
 export const sessionCookie = "hueb_admin_session"
@@ -14,6 +15,10 @@ export type AdminSession = {
   name: string
   email: string
   role: AdminRole
+  /** งานที่เข้าถึงได้ (SuperAdmin = ว่าง = ทุกงาน) */
+  eventIds?: number[]
+  /** JWT จาก API (ไม่มีในโหมดข้อมูลจำลอง) */
+  token?: string
   /** วินาที (Unix) */
   exp: number
 }
@@ -50,10 +55,10 @@ async function key() {
   )
 }
 
-export async function signSession(session: Omit<AdminSession, "exp">) {
+export async function signSession(session: Omit<AdminSession, "exp">, maxAgeSeconds = sessionMaxAgeSeconds) {
   const payload: AdminSession = {
     ...session,
-    exp: Math.floor(Date.now() / 1000) + sessionMaxAgeSeconds,
+    exp: Math.floor(Date.now() / 1000) + maxAgeSeconds,
   }
   const body = toBase64Url(encoder.encode(JSON.stringify(payload)))
   const signature = await crypto.subtle.sign("HMAC", await key(), encoder.encode(body))
