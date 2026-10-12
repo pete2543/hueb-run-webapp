@@ -197,3 +197,23 @@ export type RunnerItem = {
   emergencyContactPhone: string | null
   medicalNote: string | null
 }
+
+export type CheckInRunner = {
+  registrationId: number
+  orderNo: string
+  firstName: string
+  lastName: string
+  distance: string
+  shirtSize: string
+  bibNumber: string | null
+  teamName: string | null
+  /** false = ยังไม่จ่าย/ถูกยกเลิก/ยังไม่มีบิบ */
+  eligible: boolean
+  checkedInAt: string | null
+  checkedInBy: string | null
+}
+
+export type CheckInList = {
+  runners: Page<CheckInRunner>
+  summary: { paid: number; checkedIn: number }
+}

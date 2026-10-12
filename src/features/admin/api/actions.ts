@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { adminFetch, describeError } from "./server"
-import type { AdminUserDto, EventSettings, ListKind, PaymentItem, Promo } from "./types"
+import type { AdminUserDto, EventSettings, ListKind, CheckInRunner, PaymentItem, Promo } from "./types"
 import { ApiError } from "@/lib/api/client"
 
 export type ActionResult = { ok: true } | { ok: false; error: string }
@@ -186,4 +186,49 @@ export async function setTracking(orderId: string, trackingNo: string): Promise<
   }
   revalidatePath(`/admin/orders/${orderId}`)
   return { ok: true }
+}
+
+function checkInError(error: unknown): string {
+  if (error instanceof ApiError) {
+    if (error.code === "CHECKIN_TOKEN_NOT_FOUND") return "ไม่พบตั๋วนี้ในระบบ ลองสแกนใหม่หรือค้นด้วยชื่อ/เลขบิบ"
+    if (error.code === "NOT_ELIGIBLE") return "เช็กอินไม่ได้: ยังไม่จ่ายเงิน ถูกยกเลิก หรือยังไม่มีเลขบิบ"
+    if (error.code === "NOT_CHECKED_IN") return "รายการนี้ยังไม่ได้เช็กอิน"
+  }
+  return describeError(error)
+}
+
+export async function scanTicket(token: string): Promise<SaveResult<CheckInRunner>> {
+  try {
+    return { ok: true, data: await adminFetch<CheckInRunner>("/checkin/scan", { method: "POST", body: JSON.stringify({ token: token.trim() }) }) }
+  } catch (error) {
+    return { ok: false, error: checkInError(error) }
+  }
+}
+
+export async function confirmCheckIn(
+  registrationId: number,
+): Promise<SaveResult<{ runner: CheckInRunner; alreadyCheckedIn: boolean }>> {
+  try {
+    const data = await adminFetch<{ runner: CheckInRunner; alreadyCheckedIn: boolean }>(
+      `/checkin/${registrationId}/confirm`,
+      { method: "POST", body: JSON.stringify({}) },
+    )
+    revalidatePath("/admin/checkin")
+    return { ok: true, data }
+  } catch (error) {
+    return { ok: false, error: checkInError(error) }
+  }
+}
+
+export async function undoCheckIn(registrationId: number, note: string): Promise<SaveResult<CheckInRunner>> {
+  try {
+    const data = await adminFetch<CheckInRunner>(`/checkin/${registrationId}/undo`, {
+      method: "POST",
+      body: JSON.stringify({ note: note.trim() }),
+    })
+    revalidatePath("/admin/checkin")
+    return { ok: true, data }
+  } catch (error) {
+    return { ok: false, error: checkInError(error) }
+  }
 }
