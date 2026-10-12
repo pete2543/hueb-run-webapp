@@ -8,6 +8,7 @@ import type { OrderDetail } from "@/features/admin/api/types"
 import { ApiError } from "@/lib/api/client"
 import { AdminCard } from "@/features/admin/components/admin-page"
 import { ApiNotice, StatusBadge } from "@/features/admin/components/admin-ui"
+import { RequestRefund } from "@/features/admin/components/refund-forms"
 import { TrackingForm } from "@/features/admin/components/tracking-form"
 import { baht, dateTime } from "@/features/admin/format"
 
@@ -48,11 +49,18 @@ async function OrderContent({ params }: { params: PageProps<"/admin/orders/[id]"
   const { role } = await adminSession()
   const canTrack = (role === "SuperAdmin" || role === "Organizer") && o.status === "Paid" && o.shipping.type === "Post"
 
+  const canRefund = (role === "SuperAdmin" || role === "Finance") && o.status === "Paid"
+
   return (
     <>
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-2xl font-bold sm:text-3xl">{o.orderNo}</h1>
         <StatusBadge status={o.status} />
+        {canRefund ? (
+          <div className="ml-auto">
+            <RequestRefund orderId={o.orderId} />
+          </div>
+        ) : null}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">

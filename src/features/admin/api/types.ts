@@ -217,3 +217,24 @@ export type CheckInList = {
   runners: Page<CheckInRunner>
   summary: { paid: number; checkedIn: number }
 }
+
+export type RefundStatus = "Requested" | "Approved" | "Completed" | "Rejected"
+
+export type RefundItem = {
+  refundId: number
+  orderId: string
+  orderNo: string
+  contactName: string
+  phone: string
+  paymentId: number | null
+  kind: "Order" | "Payment"
+  amount: number
+  reason: string
+  note: string | null
+  status: RefundStatus
+  externalRef: string | null
+  requestedBy: string
+  approvedBy: string | null
+  createdAt: string
+  processedAt: string | null
+}

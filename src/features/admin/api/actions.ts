@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { adminFetch, describeError } from "./server"
-import type { AdminUserDto, EventSettings, ListKind, CheckInRunner, PaymentItem, Promo } from "./types"
+import type { AdminUserDto, EventSettings, ListKind, CheckInRunner, PaymentItem, Promo, RefundItem } from "./types"
 import { ApiError } from "@/lib/api/client"
 
 export type ActionResult = { ok: true } | { ok: false; error: string }
@@ -231,4 +231,47 @@ export async function undoCheckIn(registrationId: number, note: string): Promise
   } catch (error) {
     return { ok: false, error: checkInError(error) }
   }
+}
+
+function refundError(error: unknown): string {
+  if (error instanceof ApiError) {
+    if (error.code === "REFUND_WRONG_STATE") return "มีคนจัดการคำขอนี้ไปก่อนแล้ว กรุณารีเฟรชรายการ"
+    if (error.code === "REFUND_NOT_ALLOWED") return "ขอคืนเงินไม่ได้: ออเดอร์ยังไม่จ่าย ถูกยกเลิก หรือสลิปอยู่ในสถานะที่คืนไม่ได้"
+    if (error.code === "REFUND_EXISTS") return "มีคำขอคืนเงินที่ยังไม่ถูกปฏิเสธอยู่แล้ว"
+  }
+  return settingsError(error)
+}
+
+export async function requestRefund(
+  orderId: string,
+  input: { reason: string; paymentId?: number; amount?: number },
+): Promise<ActionResult> {
+  try {
+    await adminFetch<RefundItem>(`/orders/${orderId}/refunds`, { method: "POST", body: JSON.stringify(input) })
+  } catch (error) {
+    return { ok: false, error: refundError(error) }
+  }
+  revalidatePath("/admin/refunds")
+  revalidatePath("/admin/payments")
+  return { ok: true }
+}
+
+export async function processRefund(
+  id: number,
+  action: "approve" | "reject" | "complete",
+  body?: { note?: string; externalRef?: string },
+): Promise<ActionResult> {
+  try {
+    await adminFetch<RefundItem>(`/refunds/${id}/${action}`, {
+      method: "POST",
+      body: action === "approve" ? undefined : JSON.stringify(body ?? {}),
+    })
+  } catch (error) {
+    revalidatePath("/admin/refunds")
+    return { ok: false, error: refundError(error) }
+  }
+  revalidatePath("/admin/refunds")
+  revalidatePath("/admin/payments")
+  revalidatePath("/admin")
+  return { ok: true }
 }

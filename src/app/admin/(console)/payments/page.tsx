@@ -93,7 +93,7 @@ async function PaymentsContent({ searchParams }: { searchParams: PageProps<"/adm
               ) : null}
               {p.reviewNote ? <p className="text-sm text-muted-foreground">หมายเหตุ: {p.reviewNote}</p> : null}
               {p.status === "NeedsReview" ? (
-                <PaymentActions paymentId={p.paymentId} reason={p.rejectReason} />
+                <PaymentActions paymentId={p.paymentId} orderId={p.orderId} reason={p.rejectReason} />
               ) : null}
             </AdminCard>
           </li>

@@ -4,9 +4,10 @@ import { Check, ExternalLink, Loader2, RefreshCw, X } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
 import { getSlipUrl, reviewPayment } from "../api/actions"
+import { RequestRefund } from "./refund-forms"
 
 /** ปุ่มตรวจสลิปตาม rejectReason (docs/admin-api-frontend-guide.md หัวข้อ 4) */
-export function PaymentActions({ paymentId, reason }: { paymentId: number; reason: string | null }) {
+export function PaymentActions({ paymentId, orderId, reason }: { paymentId: number; orderId: string; reason: string | null }) {
   const router = useRouter()
   const [pending, start] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -59,6 +60,9 @@ export function PaymentActions({ paymentId, reason }: { paymentId: number; reaso
           <X className="size-4" aria-hidden /> ปฏิเสธ
         </button>
       </div>
+      {reason === "ALREADY_PAID" || reason === "ORDER_EXPIRED" ? (
+        <RequestRefund orderId={orderId} paymentId={paymentId} />
+      ) : null}
       {rejecting ? (
         <div className="flex flex-col gap-2">
           <textarea
