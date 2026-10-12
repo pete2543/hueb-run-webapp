@@ -101,7 +101,7 @@ export type OrderSummary = {
   total: number
   payableAmount: number
   expiresAt: string
-  /** เหตุผลเมื่อสลิปไม่ผ่าน */
+  /** รหัสเหตุผลเมื่อสลิปไม่ผ่าน/รอตรวจ เช่น AMOUNT_MISMATCH (ข้อความดู slipReasonText ใน payment-view) */
   rejectReason: string | null
 }
 

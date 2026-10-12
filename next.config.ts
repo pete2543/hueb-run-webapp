@@ -6,8 +6,8 @@ const nextConfig: NextConfig = {
   partialPrefetching: true,
   experimental: {
     serverActions: {
-      // สลิปถูกย่อในเบราว์เซอร์ก่อนส่ง (ปกติไม่เกิน 1MB) เผื่อไว้สำหรับรูปที่ย่อไม่ได้
-      bodySizeLimit: "4mb",
+      // สลิปถูกย่อในเบราว์เซอร์ก่อนส่ง (ปกติไม่เกิน 1MB) เผื่อไว้ถึงเพดานของ API (5MB)
+      bodySizeLimit: "6mb",
     },
   },
   turbopack: {

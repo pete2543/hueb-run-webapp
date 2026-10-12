@@ -1,7 +1,8 @@
 "use server"
 
 import { ApiError, apiFetch } from "@/lib/api/client"
-import { eventSlug, useMock } from "./api"
+import { eventSlug, toOrderSummary, toZipMatch, useMock } from "./api"
+import type { ApiOrder, ApiPromoQuote, ApiZipMatch } from "./api-types"
 import {
   mockDistances,
   mockPromos,
@@ -54,18 +55,23 @@ export async function validatePromo(
   const code = rawCode.trim().toUpperCase()
   if (!code) return fail("PROMO_INVALID", "กรุณากรอกโค้ด")
   if (useMock) return mockPromo(code, subtotalOf(distanceIds))
-  return callApi(() =>
-    apiFetch<PromoResult>(`/events/${eventSlug}/promo/validate`, {
+  return callApi(async () => {
+    const quote = await apiFetch<ApiPromoQuote>(`/events/${eventSlug}/promo/validate`, {
       method: "POST",
       body: JSON.stringify({ code, distanceIds }),
-    }),
-  )
+    })
+    return {
+      code: quote.code,
+      discount: quote.discountAmount,
+      label: `ลด ฿${quote.discountAmount.toLocaleString("th-TH")}`,
+    }
+  })
 }
 
 export async function lookupZip(zipCode: string): Promise<ActionResult<ZipMatch[]>> {
   if (!/^\d{5}$/.test(zipCode)) return fail("VALIDATION", "รหัสไปรษณีย์ 5 หลัก")
   if (useMock) return { ok: true, data: mockZipIndex[zipCode] ?? [] }
-  return callApi(() => apiFetch<ZipMatch[]>(`/geo/zip/${zipCode}`))
+  return callApi(async () => (await apiFetch<ApiZipMatch[]>(`/geo/zip/${zipCode}`)).map(toZipMatch))
 }
 
 export async function createOrder(input: CreateOrderPayload): Promise<ActionResult<CreatedOrder>> {
@@ -90,7 +96,13 @@ export async function createOrder(input: CreateOrderPayload): Promise<ActionResu
     return callApi(() =>
       apiFetch<CreatedOrder>(`/events/${eventSlug}/orders`, {
         method: "POST",
-        body: JSON.stringify(payload),
+        // ฟิลด์ว่างส่งเป็น null ให้ตรงกับ nullable ของ API
+        body: JSON.stringify({
+          ...payload,
+          contact: { ...payload.contact, email: payload.contact.email || null },
+          runners: payload.runners.map((r) => ({ ...r, medicalNote: r.medicalNote || null })),
+          promoCode: payload.promoCode || null,
+        }),
       }),
     )
   }
@@ -150,13 +162,19 @@ export async function getOrderStatus(orderId: string): Promise<ActionResult<Orde
     const order = getMockOrder(orderId)
     return order ? { ok: true, data: order } : fail("NOT_FOUND", "ไม่พบใบสมัคร")
   }
-  return callApi(() => apiFetch<OrderSummary>(`/orders/${orderId}`, { cache: "no-store" }))
+  return callApi(async () =>
+    toOrderSummary(await apiFetch<ApiOrder>(`/orders/${orderId}`, { cache: "no-store" })),
+  )
 }
 
-const maxSlipBytes = 4 * 1024 * 1024
-const slipTypes = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"]
+const maxSlipBytes = 5 * 1024 * 1024
+const slipTypes = ["image/jpeg", "image/png", "image/webp"]
 
-/** POST /orders/{orderId}/payment/slip (multipart) */
+/**
+ * POST /orders/{orderId}/payment/slip (multipart ฟิลด์ `file`)
+ * ผลลัพธ์ทุกกรณีที่ผู้ใช้ไม่ต้องทำอะไรเพิ่ม (ผ่าน/กำลังตรวจ/รอเจ้าหน้าที่/สลิปไม่ผ่าน/มีสลิปรออยู่แล้ว/จ่ายแล้ว)
+ * คืนเป็นสถานะออเดอร์ล่าสุด ให้หน้าเว็บสลับโหมดตาม paymentStatus
+ */
 export async function uploadSlip(
   orderId: string,
   formData: FormData,
@@ -164,8 +182,8 @@ export async function uploadSlip(
   const file = formData.get("slip")
   if (!(file instanceof File) || file.size === 0) return fail("VALIDATION", "กรุณาเลือกรูปสลิป")
   if (!slipTypes.includes(file.type))
-    return fail("VALIDATION", "รองรับเฉพาะไฟล์รูป (JPG, PNG, WEBP, HEIC)")
-  if (file.size > maxSlipBytes) return fail("VALIDATION", "ไฟล์ใหญ่เกิน 4MB")
+    return fail("VALIDATION", "รองรับเฉพาะไฟล์ JPG, PNG หรือ WEBP")
+  if (file.size > maxSlipBytes) return fail("VALIDATION", "ไฟล์ใหญ่เกิน 5MB")
 
   if (useMock) {
     const order = getMockOrder(orderId)
@@ -177,8 +195,13 @@ export async function uploadSlip(
   }
 
   const body = new FormData()
-  body.set("slip", file)
-  return callApi(() =>
-    apiFetch<OrderSummary>(`/orders/${orderId}/payment/slip`, { method: "POST", body }),
+  body.set("file", file)
+  const upload = await callApi(() =>
+    apiFetch<unknown>(`/orders/${orderId}/payment/slip`, { method: "POST", body }),
   )
+  if (!upload.ok && !softFailCodes.includes(upload.code)) return upload
+  return getOrderStatus(orderId)
 }
+
+/** error ที่แปลว่า "สถานะออเดอร์เปลี่ยนไปแล้ว" ไม่ใช่ความผิดของผู้ใช้ ให้ดึงสถานะล่าสุดมาแสดงแทน */
+const softFailCodes = ["SLIP_REJECTED", "PAYMENT_IN_PROGRESS", "ORDER_ALREADY_PAID"]

@@ -26,11 +26,11 @@ async function OrderPayment({ params }: Pick<PageProps<"/register/payment/[order
   if (!order) notFound()
   if (order.status === "Paid") redirect(`/register/success/${orderId}`)
 
-  const payment = await getPaymentInfo(order)
-  const [svg, png] = await Promise.all([
-    qrSvg(payment.promptPayPayload),
-    qrPngDataUrl(payment.promptPayPayload),
-  ])
+  // หมดเวลา/ยกเลิก: API ไม่ให้ข้อมูลโอนแล้ว (409) แสดงเฉพาะสถานะ
+  const payment = order.status === "Pending" ? await getPaymentInfo(order) : null
+  const [svg, png] = payment
+    ? await Promise.all([qrSvg(payment.promptPayPayload), qrPngDataUrl(payment.promptPayPayload)])
+    : ["", ""]
 
   return <PaymentView initialOrder={order} payment={payment} qrSvg={svg} qrPng={png} />
 }

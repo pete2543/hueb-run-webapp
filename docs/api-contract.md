@@ -34,12 +34,13 @@
 | GET | `/geo/provinces/{id}/districts` | 4 | โหลดตามระดับ ไม่โหลดทั้งหมดทีเดียว |
 | GET | `/geo/districts/{id}/subdistricts` | 4 | |
 | GET | `/geo/zip/{zipCode}` | 4 | คืนจังหวัด/อำเภอ/ตำบลที่ตรงรหัสไปรษณีย์ |
+| GET | `/geo/search?q=&limit=20` | 4 | ช่องค้นหาเดียว (autocomplete): ชื่อตำบล/อำเภอ/จังหวัด ไทยหรืออังกฤษ หรือต้นรหัสไปรษณีย์ หลายคำคั่นช่องว่าง (`ต.` `อ.` `จ.` `แขวง` `เขต` ระบุระดับได้) คืนที่อยู่ครบชุด + `label` · q < 2 ตัวอักษร → `[]` · limit 1–50 |
 | POST | `/events/{slug}/promo/validate` | 4 | ตรวจโค้ด + คืนส่วนลดที่จะได้ (ยังไม่ใช้โค้ดจริง) |
 | POST | `/events/{slug}/orders` | 4→5 | สร้าง Order + จองโควตา/เสื้อ/โค้ดใน transaction เดียว (ดูด้านล่าง) |
 | GET | `/orders/{orderId}` | 5, 6 | สถานะ ยอด เวลาหมดอายุ รายชื่อนักวิ่ง |
 | GET | `/orders/{orderId}/payment` | 5 | ข้อมูลสำหรับสร้าง QR (payload PromptPay, ยอดที่ต้องโอน, ชื่อบัญชี) |
 | POST | `/orders/{orderId}/payment/slip` | 5 | อัปโหลดสลิป (multipart) |
-| GET | `/orders/{orderId}/tickets` | 6 | เลขบิบ + QR เช็กอินของแต่ละคน (เมื่อ `Paid`) |
+| GET | `/orders/{orderId}/tickets` | 6 | เลขบิบ + `checkInToken` (หน้าเว็บสร้าง QR เอง) เฉพาะ `Paid` ไม่งั้น `409 ORDER_NOT_PAID` |
 | POST | `/line/webhook` | – | follow/unfollow จาก LINE (ตรวจ signature) |
 | POST | `/auth/line/callback` | – | LINE Login callback เชื่อม `LineAccount` กับ Order |
 
@@ -71,6 +72,27 @@
 ข้อผิดพลาดที่ต้องรองรับในหน้าเว็บ: `409 QUOTA_FULL` (ระบุระยะ), `409 SHIRT_OUT_OF_STOCK`, `409 PROMO_EXHAUSTED`, `422 PROMO_INVALID`, `400 REGISTRATION_CLOSED`
 
 ฝั่งเซิร์ฟเวอร์ต้อง: คำนวณราคาเอง (ไม่เชื่อราคาจากหน้าเว็บ), ตรวจเวลาเปิด/ปิดรับ, จองโควตา/ไซซ์/โค้ดแบบ atomic, สร้าง `PayableAmount` ที่ไม่ซ้ำ, ตั้ง `ExpiresAt`
+
+สถานะที่ implement แล้ว (2026-10-11): validate/promo/create/GET order/tickets + job หมดเวลา ทุก 1 นาที
+error เพิ่มเติม: `409 PAYMENT_SLOT_BUSY` (เศษสตางค์ของยอดนี้เต็ม 99 ช่อง), `404 ORDER_NOT_FOUND`
+`GET /orders/{id}` ไม่ส่ง `medicalNote`, ผู้ติดต่อฉุกเฉิน, `checkInToken`; `status` แสดง `Expired` ทันทีเมื่อเลย `expiresAt`
+
+### GET `/orders/{orderId}/payment`
+
+`200 { orderId, orderNo, amount, accountName, qrPayload, expiresAt, payment: { paymentId, status, rejectReason, createdAt } | null }`
+error: `404 ORDER_NOT_FOUND`, `409 ORDER_ALREADY_PAID`, `409 ORDER_NOT_PAYABLE`
+
+### POST `/orders/{orderId}/payment/slip`
+
+multipart ฟิลด์ `file` (.jpg .jpeg .png .webp ไม่เกิน 5 MB)
+- `200 { paymentId, status: "Verified", orderStatus: "Paid" }`
+- `202 { paymentId, status: "Verifying", nextCheckAt }` — poll `GET /orders/{id}/payment`
+- `202 { paymentId, status: "NeedsReview", reason }` — รอเจ้าหน้าที่
+- `422 SLIP_REJECTED` details `{ paymentId, reason: INVALID_SLIP | AMOUNT_MISMATCH | WRONG_RECEIVER | DUPLICATE_SLIP }` — อัปโหลดใหม่ได้
+- `400 VALIDATION_ERROR` (`details.file`), `404 ORDER_NOT_FOUND`, `409 ORDER_ALREADY_PAID`, `409 ORDER_NOT_PAYABLE`, `409 PAYMENT_IN_PROGRESS`, `409 SLIP_DUPLICATE`
+
+`GET /orders/{id}` มีฟิลด์ `payment: { paymentId, status, rejectReason } | null` (ล่าสุด)
+ออเดอร์ยอด 0 บาท (โค้ดฟรี + รับเอง) เป็น `Paid` ทันทีตอนสร้าง `payableAmount = 0`
 
 ## Admin
 

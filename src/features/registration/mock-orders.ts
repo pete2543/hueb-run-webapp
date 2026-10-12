@@ -101,7 +101,7 @@ export function markMockSlip(orderId: string, fileName: string) {
   order.rejectReason = null
   if (/reject/i.test(fileName)) {
     order.paymentStatus = "Rejected"
-    order.rejectReason = "ยอดเงินในสลิปไม่ตรงกับยอดที่ต้องโอน"
+    order.rejectReason = "AMOUNT_MISMATCH"
   } else if (/review/i.test(fileName)) {
     order.paymentStatus = "NeedsReview"
   } else {

@@ -24,8 +24,37 @@ import { clearDraft, getDraft, setDraft } from "../draft-store"
 import type { OrderSummary, PaymentInfo } from "../types"
 
 const loadAlert = () => import("@/lib/alert")
-const pollMs = 3000
+const pollMs = 10_000
+const maxSlipBytes = 5 * 1024 * 1024
+const slipTypes = ["image/jpeg", "image/png", "image/webp"]
 const warnBelowMs = 5 * 60 * 1000
+
+/** ข้อความตามรหัสเหตุผลของสลิป (docs/frontend-payment-handoff.md) */
+function slipReasonText(reason: string | null, amount: number) {
+  switch (reason) {
+    case "INVALID_SLIP":
+      return "อ่านสลิปไม่ได้หรือไม่ใช่สลิปโอนเงิน กรุณาอัปโหลดรูปสลิปที่ชัดเจน"
+    case "AMOUNT_MISMATCH":
+      return `ยอดโอนไม่ตรง ต้องโอน ${formatBaht(amount)} (รวมเศษสตางค์)`
+    case "WRONG_RECEIVER":
+      return "บัญชีผู้รับไม่ถูกต้อง กรุณาโอนผ่าน QR ในหน้านี้"
+    case "DUPLICATE_SLIP":
+      return "สลิปนี้ถูกใช้ชำระไปแล้ว"
+    default:
+      return "สลิปไม่ผ่านการตรวจ"
+  }
+}
+
+function reviewText(reason: string | null) {
+  switch (reason) {
+    case "ORDER_EXPIRED":
+      return "ได้รับสลิปหลังหมดเวลา เจ้าหน้าที่จะตรวจสอบและติดต่อกลับ ไม่ต้องโอนซ้ำ"
+    case "VERIFY_TIMEOUT":
+      return "ระบบตรวจสลิปอัตโนมัติไม่สำเร็จ เจ้าหน้าที่จะตรวจสอบให้และแจ้งผลทาง LINE ไม่ต้องโอนซ้ำ"
+    default:
+      return "ได้รับสลิปแล้ว รอเจ้าหน้าที่ตรวจสอบและแจ้งผลทาง LINE ไม่ต้องโอนซ้ำ"
+  }
+}
 
 /** เวลาที่เหลือก่อนหมดเวลาจอง (ms) อัปเดตทุกวินาที */
 function useTimeLeft(expiresAt: string) {
@@ -72,7 +101,8 @@ export function PaymentView({
   qrPng,
 }: {
   initialOrder: OrderSummary
-  payment: PaymentInfo
+  /** null = ออเดอร์ไม่อยู่ในสถานะที่ต้องโอนแล้ว (หมดเวลา/ยกเลิก/รอเจ้าหน้าที่) */
+  payment: PaymentInfo | null
   qrSvg: string
   qrPng: string
 }) {
@@ -84,16 +114,29 @@ export function PaymentView({
   const waitingForPayment =
     order.status === "Pending" &&
     (order.paymentStatus === "Pending" || order.paymentStatus === "Rejected")
-  const expired = order.status === "Expired" || (waitingForPayment && timeLeft === 0)
+  // ส่งสลิปแล้วแต่ออเดอร์หมดเวลาระหว่างตรวจ ต้องแสดง "รอตรวจ" ไม่ใช่ "หมดเวลา"
+  const slipInReview = order.paymentStatus === "Verifying" || order.paymentStatus === "NeedsReview"
+  const expired =
+    !slipInReview && order.status !== "Paid" && (order.status !== "Pending" || timeLeft === 0)
 
-  // รอผลตรวจสลิป: ถามสถานะซ้ำจนกว่าจะรู้ผล
+  // รอผลตรวจสลิป: ถามสถานะซ้ำจนกว่าจะรู้ผล หยุดตอนซ่อนแท็บ แล้วถามทันทีเมื่อกลับมา
   useEffect(() => {
     if (order.paymentStatus !== "Verifying") return
-    const timer = setInterval(async () => {
+    async function refresh() {
       const result = await getOrderStatus(order.orderId)
       if (result.ok) setOrder(result.data)
+    }
+    const timer = setInterval(() => {
+      if (document.visibilityState === "visible") void refresh()
     }, pollMs)
-    return () => clearInterval(timer)
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void refresh()
+    }
+    document.addEventListener("visibilitychange", onVisible)
+    return () => {
+      clearInterval(timer)
+      document.removeEventListener("visibilitychange", onVisible)
+    }
   }, [order.orderId, order.paymentStatus])
 
   // จ่ายสำเร็จ: ล้างข้อมูลที่กรอกไว้ในเครื่อง แล้วไปหน้าบัตรนักวิ่ง
@@ -112,7 +155,7 @@ export function PaymentView({
     }
   }, [expired, order.orderId])
 
-  if (expired) return <ExpiredState orderNo={order.orderNo} />
+  if (expired) return <ExpiredState orderNo={order.orderNo} status={order.status} />
   if (order.status === "Paid")
     return <CheckingState title="ชำระเงินสำเร็จ" text="กำลังพาไปหน้าบัตรนักวิ่ง…" />
 
@@ -120,11 +163,13 @@ export function PaymentView({
     <div className="grid gap-5 lg:grid-cols-2 lg:items-start lg:gap-8">
       <div className="flex flex-col gap-4">
         <Countdown timeLeft={timeLeft} paused={!waitingForPayment} />
-        <QrCard order={order} payment={payment} qrSvg={qrSvg} qrPng={qrPng} />
+        {payment ? (
+          <QrCard order={order} payment={payment} qrSvg={qrSvg} qrPng={qrPng} />
+        ) : null}
       </div>
 
       <div className="flex flex-col gap-4">
-        <HowToPay amount={order.payableAmount} />
+        {payment ? <HowToPay amount={order.payableAmount} /> : null}
         {order.paymentStatus === "Verifying" ? (
           <CheckingState
             title="กำลังตรวจสลิป…"
@@ -133,12 +178,16 @@ export function PaymentView({
         ) : order.paymentStatus === "NeedsReview" ? (
           <CheckingState
             title="ส่งให้เจ้าหน้าที่ตรวจ"
-            text="ระบบตรวจอัตโนมัติไม่ได้ เจ้าหน้าที่จะตรวจให้และแจ้งผลทาง LINE ไม่ต้องโอนซ้ำ"
+            text={reviewText(order.rejectReason)}
           />
         ) : (
           <SlipUpload
             orderId={order.orderId}
-            rejectReason={order.paymentStatus === "Rejected" ? order.rejectReason : null}
+            rejectReason={
+              order.paymentStatus === "Rejected"
+                ? slipReasonText(order.rejectReason, order.payableAmount)
+                : null
+            }
             onUploaded={setOrder}
           />
         )}
@@ -169,9 +218,11 @@ function Countdown({ timeLeft, paused }: { timeLeft: number; paused: boolean }) 
       </p>
       {paused ? null : (
         <>
+          {/* เวลาตอน render ฝั่ง server กับ browser ต่างกันได้ 1 วินาที */}
           <span
             role="timer"
             aria-hidden
+            suppressHydrationWarning
             className={cn(
               "font-heading text-2xl font-bold tabular-nums",
               warn ? "text-warning" : "text-foreground",
@@ -319,8 +370,12 @@ function SlipUpload({
   function choose(next: File | undefined) {
     setError(undefined)
     if (!next) return
-    if (!next.type.startsWith("image/")) {
-      setError("เลือกได้เฉพาะไฟล์รูปภาพ")
+    if (!slipTypes.includes(next.type)) {
+      setError("รองรับเฉพาะไฟล์ JPG, PNG หรือ WEBP")
+      return
+    }
+    if (next.size > maxSlipBytes) {
+      setError("ไฟล์ใหญ่เกิน 5MB")
       return
     }
     setFile(next)
@@ -358,7 +413,7 @@ function SlipUpload({
           <AlertTriangle className="size-5 shrink-0 text-destructive" aria-hidden />
           <p>
             <strong className="block">สลิปไม่ผ่านการตรวจ</strong>
-            {rejectReason} ตรวจยอดแล้วแนบสลิปใหม่อีกครั้ง
+            {rejectReason} แล้วแนบสลิปใหม่อีกครั้ง
           </p>
         </div>
       ) : null}
@@ -387,10 +442,10 @@ function SlipUpload({
         <label className="flex min-h-40 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-primary/40 bg-muted/40 p-5 text-center transition hover:border-primary hover:bg-muted has-focus-visible:ring-3 has-focus-visible:ring-primary/30">
           <ImageUp className="size-9 text-primary" aria-hidden />
           <span className="font-semibold">แตะเพื่อเลือกรูปสลิป</span>
-          <span className="text-xs text-muted-foreground">JPG, PNG หรือภาพหน้าจอจากแอปธนาคาร</span>
+          <span className="text-xs text-muted-foreground">JPG, PNG, WEBP ไม่เกิน 5MB</span>
           <input
             type="file"
-            accept="image/*"
+            accept="image/jpeg,image/png,image/webp"
             className="sr-only"
             onChange={(e) => {
               choose(e.target.files?.[0])
@@ -442,7 +497,19 @@ function CheckingState({ title, text }: { title: string; text: string }) {
   )
 }
 
-function ExpiredState({ orderNo }: { orderNo: string }) {
+function ExpiredState({ orderNo, status }: { orderNo: string; status: OrderSummary["status"] }) {
+  if (status === "Cancelled" || status === "Refunded") {
+    return (
+      <section className="mx-auto flex max-w-md flex-col items-center gap-4 rounded-3xl border bg-white p-6 text-center">
+        <Mascot pose="wai" sizes="160px" className="h-auto w-32" />
+        <h2 className="font-heading text-2xl font-bold">ใบสมัครนี้ถูกยกเลิกแล้ว</h2>
+        <p className="text-muted-foreground">
+          ใบสมัคร {orderNo} {status === "Refunded" ? "คืนเงินแล้ว" : "ถูกยกเลิก"} ไม่สามารถชำระเงินได้
+          ติดต่อผู้จัดงานหากมีข้อสงสัย
+        </p>
+      </section>
+    )
+  }
   return (
     <section className="mx-auto flex max-w-md flex-col items-center gap-4 rounded-3xl border bg-white p-6 text-center">
       <Mascot pose="wai" sizes="160px" className="h-auto w-32" />
