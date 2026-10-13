@@ -51,8 +51,11 @@ export function LineLink({ orderId }: { orderId: string }) {
       // ถ้าเช็กสถานะเพื่อนไม่ได้ (ไม่ได้ผูก OA กับ LINE Login) ถือว่าเป็นเพื่อนแล้ว ไม่รบกวนซ้ำ
       const friend = await liff.getFriendship().then((f) => f.friendFlag).catch(() => true)
       setState(friend ? "linked" : "needFriend")
-    } catch {
-      setError("เชื่อมต่อ LINE ไม่ได้ กรุณาลองใหม่อีกครั้ง")
+    } catch (e) {
+      // แสดงสาเหตุจริงจาก LIFF ด้วย (เช่น code/message) จะได้แก้ถูกจุด แทนที่จะเงียบ
+      const reason = e instanceof Error ? e.message : String(e)
+      console.error("LIFF link failed", e)
+      setError(`เชื่อมต่อ LINE ไม่ได้ กรุณาลองใหม่อีกครั้ง (${reason})`)
       setState("error")
     }
   }, [orderId, pendingKey, doneKey])
@@ -60,8 +63,12 @@ export function LineLink({ orderId }: { orderId: string }) {
   useEffect(() => {
     if (!liffId) return
     // อ่าน storage ได้เฉพาะฝั่ง browser จึงตั้งสถานะหลัง mount (เลื่อนออกจาก effect body กัน render ซ้อน)
+    // กลับมาจากหน้า login LINE: จำได้จาก flag ที่ตั้งไว้ก่อน login หรือจาก query ที่ LIFF แนบมา (liff.state, code ฯลฯ)
+    // ไม่พึ่ง flag อย่างเดียว เพราะ storage อาจหายถ้า login เปิดในแท็บ/บริบทอื่น
+    const returning =
+      sessionStorage.getItem(pendingKey) !== null || /[?&](liff\.state|liffClientId|liffRedirectUri)=/.test(window.location.search)
     if (localStorage.getItem(doneKey)) void Promise.resolve().then(() => setState("linked"))
-    else if (sessionStorage.getItem(pendingKey)) void Promise.resolve().then(run)
+    else if (returning) void Promise.resolve().then(run)
   }, [doneKey, pendingKey, run])
 
   if (!liffId) return null
