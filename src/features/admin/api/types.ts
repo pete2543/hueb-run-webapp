@@ -238,3 +238,38 @@ export type RefundItem = {
   createdAt: string
   processedAt: string | null
 }
+
+export type AuditItem = {
+  id: number
+  createdAt: string
+  userId: string | null
+  userName: string | null
+  action: string
+  entityType: string
+  entityId: string
+  oldValues: Record<string, unknown> | null
+  newValues: Record<string, unknown> | null
+  ipAddress: string | null
+}
+
+export type BroadcastStatus = "Draft" | "Scheduled" | "Sending" | "Sent" | "Cancelled"
+
+export type BroadcastItem = {
+  id: number
+  eventId: number
+  title: string
+  body: string
+  channel: "Line" | "Email"
+  audienceDistanceId: number | null
+  onlyPaid: boolean
+  status: BroadcastStatus
+  scheduledAt: string | null
+  sentAt: string | null
+  recipientCount: number
+  successCount: number
+  failCount: number
+  createdAt: string
+  createdBy: string | null
+  /** มีเฉพาะตอนดูร่างรายตัว: targetOrders = ออเดอร์ที่เข้าเงื่อนไข, recipients = ผูก LINE และยังเป็นเพื่อน */
+  audience: { targetOrders: number; recipients: number } | null
+}

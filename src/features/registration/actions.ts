@@ -205,3 +205,19 @@ export async function uploadSlip(
 
 /** error ที่แปลว่า "สถานะออเดอร์เปลี่ยนไปแล้ว" ไม่ใช่ความผิดของผู้ใช้ ให้ดึงสถานะล่าสุดมาแสดงแทน */
 const softFailCodes = ["SLIP_REJECTED", "PAYMENT_IN_PROGRESS", "ORDER_ALREADY_PAID"]
+
+/**
+ * ผูก LINE ของนักวิ่ง (ID token จาก LIFF) กับออเดอร์ เพื่อรับแจ้งเตือนทาง LINE
+ * ต้องเป็นเพื่อนกับ OA ด้วยถึงจะได้ข้อความ (webhook follow ฝั่ง API)
+ */
+export async function linkLine(orderId: string, idToken: string): Promise<ActionResult<null>> {
+  if (useMock) return { ok: true, data: null }
+  return callApi(async () => {
+    await apiFetch<void>(`/orders/${encodeURIComponent(orderId)}/line`, {
+      method: "POST",
+      body: JSON.stringify({ idToken }),
+      cache: "no-store",
+    })
+    return null
+  })
+}

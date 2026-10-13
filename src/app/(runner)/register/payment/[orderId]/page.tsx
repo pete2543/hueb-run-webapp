@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import { notFound, redirect } from "next/navigation"
 import { Suspense } from "react"
 import { getOrder, getPaymentInfo } from "@/features/registration/api"
+import { LineLink } from "@/features/registration/components/line-link"
 import { PaymentView } from "@/features/registration/components/payment-view"
 import { StepHeader } from "@/features/registration/components/step-header"
 import { qrPngDataUrl, qrSvg } from "@/lib/qr"
@@ -32,5 +33,11 @@ async function OrderPayment({ params }: Pick<PageProps<"/register/payment/[order
     ? await Promise.all([qrSvg(payment.promptPayPayload), qrPngDataUrl(payment.promptPayPayload)])
     : ["", ""]
 
-  return <PaymentView initialOrder={order} payment={payment} qrSvg={svg} qrPng={png} />
+  return (
+    <>
+      <PaymentView initialOrder={order} payment={payment} qrSvg={svg} qrPng={png} />
+      {/* ผูก LINE ตั้งแต่ตอนรอจ่าย จะได้รับแจ้งผลตรวจสลิป/จ่ายสำเร็จ */}
+      {order.status === "Pending" ? <LineLink orderId={orderId} /> : null}
+    </>
+  )
 }

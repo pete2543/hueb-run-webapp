@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import { notFound, redirect } from "next/navigation"
 import { Suspense } from "react"
 import { getEvent, getOrder, getTickets } from "@/features/registration/api"
+import { LineLink } from "@/features/registration/components/line-link"
 import {
   SuccessActions,
   SuccessHero,
@@ -62,6 +63,7 @@ async function OrderTicketsView({
           ))}
         </div>
       </section>
+      <LineLink orderId={orderId} />
       <SuccessActions event={event} />
     </>
   )

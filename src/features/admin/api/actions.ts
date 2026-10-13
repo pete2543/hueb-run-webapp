@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { adminFetch, describeError } from "./server"
-import type { AdminUserDto, EventSettings, ListKind, CheckInRunner, PaymentItem, Promo, RefundItem } from "./types"
+import type { AdminUserDto, BroadcastItem, EventSettings, ListKind, CheckInRunner, PaymentItem, Promo, RefundItem } from "./types"
 import { ApiError } from "@/lib/api/client"
 
 export type ActionResult = { ok: true } | { ok: false; error: string }
@@ -273,5 +273,66 @@ export async function processRefund(
   revalidatePath("/admin/refunds")
   revalidatePath("/admin/payments")
   revalidatePath("/admin")
+  return { ok: true }
+}
+
+function broadcastError(error: unknown): string {
+  if (error instanceof ApiError) {
+    const d = error.details as Record<string, unknown> | undefined
+    if (error.code === "AUDIENCE_CHANGED") {
+      return `จำนวนผู้รับเปลี่ยนเป็น ${d?.current ?? "?"} คน (จากที่ยืนยันไว้ ${d?.expected ?? "?"}) กรุณาตรวจอีกครั้งแล้วกดส่งใหม่`
+    }
+    if (error.code === "NO_RECIPIENTS") {
+      return "ไม่มีผู้รับที่ส่ง LINE ถึงได้ (ต้องผูก LINE กับใบสมัครและยังเป็นเพื่อนกับ OA)"
+    }
+    if (error.code === "BROADCAST_WRONG_STATE") return "สถานะประกาศเปลี่ยนไปแล้ว กรุณารีเฟรชหน้า"
+  }
+  return settingsError(error)
+}
+
+export async function saveBroadcast(
+  eventId: number,
+  broadcastId: number | null,
+  body: { title: string; body: string; audienceDistanceId: number | null; onlyPaid: boolean },
+): Promise<SaveResult<BroadcastItem>> {
+  try {
+    const data = await adminFetch<BroadcastItem>(
+      broadcastId == null ? `/events/${eventId}/broadcasts` : `/broadcasts/${broadcastId}`,
+      { method: broadcastId == null ? "POST" : "PUT", body: JSON.stringify(body) },
+    )
+    revalidatePath("/admin/broadcasts")
+    return { ok: true, data }
+  } catch (error) {
+    return { ok: false, error: broadcastError(error) }
+  }
+}
+
+/** expectedRecipients = จำนวนที่แอดมินเห็นและยืนยัน; scheduledAt เป็น ISO UTC (ไม่ส่ง = ส่งทันที) */
+export async function sendBroadcast(
+  id: number,
+  expectedRecipients: number,
+  scheduledAt?: string,
+): Promise<ActionResult> {
+  try {
+    await adminFetch<BroadcastItem>(`/broadcasts/${id}/send`, {
+      method: "POST",
+      body: JSON.stringify({ expectedRecipients, scheduledAt: scheduledAt ?? null }),
+    })
+  } catch (error) {
+    revalidatePath("/admin/broadcasts")
+    return { ok: false, error: broadcastError(error) }
+  }
+  revalidatePath("/admin/broadcasts")
+  return { ok: true }
+}
+
+export async function cancelBroadcast(id: number): Promise<ActionResult> {
+  try {
+    await adminFetch<BroadcastItem>(`/broadcasts/${id}/cancel`, { method: "POST" })
+  } catch (error) {
+    revalidatePath("/admin/broadcasts")
+    return { ok: false, error: broadcastError(error) }
+  }
+  revalidatePath("/admin/broadcasts")
   return { ok: true }
 }

@@ -65,6 +65,9 @@ async function authenticate(email: string, password: string): Promise<AuthResult
     if (error instanceof ApiError) {
       if (error.status === 401 || error.status === 400) return invalid
       if (error.status === 429) return { error: "ลองบ่อยเกินไป กรุณารอสักครู่แล้วลองใหม่" }
+      // 404 = เซิร์ฟเวอร์ตอบแต่ไม่มี endpoint นี้ (มักยังไม่ได้ deploy API เวอร์ชันหลังบ้าน) ต่างจากเน็ต/เซิร์ฟเวอร์ล่ม
+      if (error.status === 404) return { error: "ไม่พบบริการหลังบ้านบนเซิร์ฟเวอร์ (API ยังไม่ได้อัปเดต?)" }
+      if (error.status >= 500) return { error: "เซิร์ฟเวอร์ขัดข้องชั่วคราว กรุณาลองใหม่อีกครั้ง" }
     }
     console.error("admin login failed", error)
     return { error: "เชื่อมต่อระบบไม่ได้ กรุณาลองใหม่อีกครั้ง" }
