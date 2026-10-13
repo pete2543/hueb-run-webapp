@@ -55,6 +55,8 @@ export type ApiOrder = {
   paidAt: string | null
   promoCode: string | null
   shipping: { type: "Pickup" | "Post"; name: string }
+  /** ได้รับแจ้งเตือน LINE เมื่อ linked และ following (API เวอร์ชันเก่าไม่มีฟิลด์นี้) */
+  line?: { linked: boolean; following: boolean }
   runners: {
     registrationId: number
     firstName: string

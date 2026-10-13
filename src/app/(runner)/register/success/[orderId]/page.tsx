@@ -63,7 +63,7 @@ async function OrderTicketsView({
           ))}
         </div>
       </section>
-      <LineLink orderId={orderId} />
+      <LineLink orderId={orderId} status={order.line} />
       <SuccessActions event={event} />
     </>
   )

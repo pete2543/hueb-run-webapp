@@ -83,6 +83,7 @@ export function toOrderSummary(o: ApiOrder): OrderSummary {
     payableAmount: o.payableAmount,
     expiresAt: o.expiresAt,
     rejectReason: o.payment?.rejectReason ?? null,
+    line: o.line,
   }
 }
 

@@ -37,7 +37,7 @@ async function OrderPayment({ params }: Pick<PageProps<"/register/payment/[order
     <>
       <PaymentView initialOrder={order} payment={payment} qrSvg={svg} qrPng={png} />
       {/* ผูก LINE ตั้งแต่ตอนรอจ่าย จะได้รับแจ้งผลตรวจสลิป/จ่ายสำเร็จ */}
-      {order.status === "Pending" ? <LineLink orderId={orderId} /> : null}
+      {order.status === "Pending" ? <LineLink orderId={orderId} status={order.line} /> : null}
     </>
   )
 }

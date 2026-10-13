@@ -4,6 +4,7 @@ import { BellRing, CheckCircle2, Loader2 } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
 import { liffReturnKey } from "@/components/liff-return"
 import { linkLine } from "../actions"
+import type { LineStatus } from "../types"
 
 const liffId = process.env.NEXT_PUBLIC_LIFF_ID
 const lineOaUrl = process.env.NEXT_PUBLIC_LINE_OA_URL || "#"
@@ -21,10 +22,10 @@ const messages: Record<string, string> = {
  * หลัง login LINE จะพากลับมาหน้านี้ จึงจำไว้ใน sessionStorage ว่ากำลังผูกอยู่เพื่อทำต่ออัตโนมัติ
  * ได้ข้อความเฉพาะคนที่เป็นเพื่อนกับ OA ด้วย — ถ้ายังไม่เป็นเพื่อนจะชวนเพิ่มเพื่อน
  */
-export function LineLink({ orderId }: { orderId: string }) {
+export function LineLink({ orderId, status }: { orderId: string; status?: LineStatus }) {
   const pendingKey = `line-link:${orderId}`
-  const doneKey = `line-linked:${orderId}`
-  const [state, setState] = useState<State>("idle")
+  // สถานะจริงจาก API: ผูกแล้ว + เป็นเพื่อน = ได้รับแจ้งเตือน, ผูกแล้วแต่ยังไม่เป็นเพื่อน = ชวนเพิ่มเพื่อน
+  const [state, setState] = useState<State>(status?.linked ? (status.following ? "linked" : "needFriend") : "idle")
   const [error, setError] = useState<string | null>(null)
 
   const run = useCallback(async () => {
@@ -52,7 +53,6 @@ export function LineLink({ orderId }: { orderId: string }) {
         setState("error")
         return
       }
-      localStorage.setItem(doneKey, "1")
       // ถ้าเช็กสถานะเพื่อนไม่ได้ (ไม่ได้ผูก OA กับ LINE Login) ถือว่าเป็นเพื่อนแล้ว ไม่รบกวนซ้ำ
       const friend = await liff.getFriendship().then((f) => f.friendFlag).catch(() => true)
       setState(friend ? "linked" : "needFriend")
@@ -63,7 +63,7 @@ export function LineLink({ orderId }: { orderId: string }) {
       setError(`เชื่อมต่อ LINE ไม่ได้ กรุณาลองใหม่อีกครั้ง (${reason})`)
       setState("error")
     }
-  }, [orderId, pendingKey, doneKey])
+  }, [orderId, pendingKey])
 
   useEffect(() => {
     if (!liffId) return
@@ -72,9 +72,8 @@ export function LineLink({ orderId }: { orderId: string }) {
     // ไม่พึ่ง flag อย่างเดียว เพราะ storage อาจหายถ้า login เปิดในแท็บ/บริบทอื่น
     const returning =
       sessionStorage.getItem(pendingKey) !== null || /[?&](liff\.state|liffClientId|liffRedirectUri)=/.test(window.location.search)
-    if (localStorage.getItem(doneKey)) void Promise.resolve().then(() => setState("linked"))
-    else if (returning) void Promise.resolve().then(run)
-  }, [doneKey, pendingKey, run])
+    if (returning && !status?.linked) void Promise.resolve().then(run)
+  }, [pendingKey, run, status?.linked])
 
   if (!liffId) return null
 
@@ -87,7 +86,7 @@ export function LineLink({ orderId }: { orderId: string }) {
         <p role="status" className="flex items-center gap-2 text-sm text-primary">
           <CheckCircle2 className="size-5" aria-hidden /> เชื่อมต่อ LINE แล้ว จะแจ้งผลการชำระเงินและข่าวสารผ่าน LINE
         </p>
-      ) : (
+      ) : state === "needFriend" ? null : (
         <>
           <p className="text-sm text-muted-foreground">
             เชื่อมต่อ LINE กับใบสมัครนี้ เพื่อรับแจ้งผลตรวจสลิป เลขพัสดุ และประกาศสำคัญจากผู้จัด (ต้องเป็นเพื่อนกับ LINE OA ด้วย)
@@ -105,7 +104,7 @@ export function LineLink({ orderId }: { orderId: string }) {
       )}
       {state === "needFriend" ? (
         <div role="status" className="flex flex-col gap-2 rounded-xl bg-caution/10 p-3 text-sm">
-          <p>เชื่อมต่อแล้ว แต่ยังไม่ได้เป็นเพื่อนกับ LINE OA จึงยังไม่ได้รับข้อความ กรุณาเพิ่มเพื่อน</p>
+          <p>เชื่อมต่อ LINE แล้ว แต่ยังไม่ได้เป็นเพื่อนกับ LINE OA จึงยังไม่ได้รับข้อความ กรุณาเพิ่มเพื่อน (เพิ่มแล้วรีเฟรชหน้านี้ — ถ้าจ่ายเงินแล้วจะได้ข้อความยืนยันตามมา)</p>
           <a href={lineOaUrl} target="_blank" rel="noreferrer" className="w-fit font-semibold text-primary underline underline-offset-4">
             เพิ่มเพื่อน LINE OA
           </a>

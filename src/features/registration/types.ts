@@ -103,7 +103,11 @@ export type OrderSummary = {
   expiresAt: string
   /** รหัสเหตุผลเมื่อสลิปไม่ผ่าน/รอตรวจ เช่น AMOUNT_MISMATCH (ข้อความดู slipReasonText ใน payment-view) */
   rejectReason: string | null
+  /** สถานะ LINE จาก API (ไม่มีในโหมดข้อมูลจำลอง) */
+  line?: LineStatus
 }
+
+export type LineStatus = { linked: boolean; following: boolean }
 
 /** GET /orders/{orderId}/payment */
 export type PaymentInfo = {
