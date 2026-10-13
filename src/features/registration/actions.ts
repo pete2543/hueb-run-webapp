@@ -5,14 +5,15 @@ import { eventSlug, toOrderSummary, toZipMatch, useMock } from "./api"
 import type { ApiOrder, ApiPromoQuote, ApiZipMatch } from "./api-types"
 import {
   mockDistances,
+  mockEvent,
   mockPromos,
   mockShippingOptions,
   mockShirtSizes,
   mockZipIndex,
 } from "./mocks"
 import { createOrderSchema, normalizePhone, type CreateOrderPayload } from "./schema"
-import { countMockOrders, getMockOrder, markMockSlip, saveMockOrder } from "./mock-orders"
-import type { ActionResult, CreatedOrder, OrderSummary, PromoResult, ZipMatch } from "./types"
+import { countMockOrders, getMockOrder, listMockOrders, markMockSlip, saveMockOrder } from "./mock-orders"
+import type { ActionResult, CreatedOrder, MyOrder, OrderSummary, PromoResult, ZipMatch } from "./types"
 
 /**
  * Server actions ของขั้นตอนสมัคร: หน้าเว็บเรียกได้ตรง ๆ โดยไม่ต้องเปิด API ให้ browser
@@ -220,4 +221,16 @@ export async function linkLine(orderId: string, idToken: string): Promise<Action
     })
     return null
   })
+}
+
+/** ใบสมัครทั้งหมดที่ผูกกับ LINE คนนี้ (ID token จาก LIFF) สำหรับหน้า "ตั๋วของฉัน" */
+export async function getMyOrders(idToken: string): Promise<ActionResult<MyOrder[]>> {
+  if (useMock) return { ok: true, data: listMockOrders(mockEvent.name) }
+  return callApi(() =>
+    apiFetch<MyOrder[]>("/line/me/orders", {
+      method: "POST",
+      body: JSON.stringify({ idToken }),
+      cache: "no-store",
+    }),
+  )
 }

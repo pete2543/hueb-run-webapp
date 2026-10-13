@@ -1,5 +1,5 @@
 import { mockDistances, mockShippingOptions, mockShirtSizes } from "./mocks"
-import type { OrderSummary, OrderTickets, Ticket } from "./types"
+import type { MyOrder, OrderSummary, OrderTickets, Ticket } from "./types"
 
 /**
  * ที่เก็บออเดอร์จำลองในหน่วยความจำของเซิร์ฟเวอร์ (ใช้เมื่อ API_MOCK) หายเมื่อรีสตาร์ต
@@ -108,4 +108,24 @@ export function markMockSlip(orderId: string, fileName: string) {
     order.paymentStatus = "Verifying"
     order.slipUploadedAt = Date.now()
   }
+}
+
+/** ออเดอร์จำลองทั้งหมดที่ยังไม่หมดเวลา (โหมดจำลองไม่มี LINE จริง จึงถือว่าทุกออเดอร์เป็นของคนที่เปิดดู) */
+export function listMockOrders(eventName: string): MyOrder[] {
+  return [...store.values()]
+    .map((order) => ({ order, summary: getMockOrder(order.orderId)! }))
+    .filter(({ summary }) => summary.status !== "Expired" && summary.status !== "Cancelled")
+    .map(({ order, summary }) => ({
+      orderId: order.orderId,
+      orderNo: order.orderNo,
+      eventName,
+      status: summary.status,
+      total: order.total,
+      runnerCount: order.runners.length,
+      deliveryType: mockShippingOptions.find((o) => o.id === order.shippingOptionId)?.type ?? "Pickup",
+      trackingNo: null,
+      // ออเดอร์จำลองไม่เก็บเวลาสร้าง ใช้เวลาหมดอายุ - 30 นาที
+      createdAt: new Date(Date.parse(order.expiresAt) - 30 * 60 * 1000).toISOString(),
+    }))
+    .reverse()
 }

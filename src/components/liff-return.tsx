@@ -8,13 +8,13 @@ export const liffReturnKey = "line-link-return"
 
 /**
  * หลัง login LINE ในเบราว์เซอร์ภายนอก LINE จะพากลับมาที่ Endpoint URL ของ LIFF (หน้าแรก) พร้อม liff.state/code
- * ต้องเรียก liff.init ที่หน้านั้นเพื่อจบการ login แล้วพาไปหน้าเดิม — หน้าที่มี LineLink ทำเอง จึงข้าม
+ * ต้องเรียก liff.init ที่หน้านั้นเพื่อจบการ login แล้วพาไปหน้าเดิม — หน้าที่มี LineLink และหน้าตั๋วของฉันทำเอง จึงข้าม
  */
 export function LiffReturn() {
   useEffect(() => {
     if (!liffId) return
     if (!/[?&](liff\.state|liffClientId|liffRedirectUri)=/.test(window.location.search)) return
-    if (/^\/register\/(payment|success)\//.test(window.location.pathname)) return
+    if (/^\/(register\/(payment|success)\/|my-tickets)/.test(window.location.pathname)) return
     void (async () => {
       try {
         const liff = (await import("@line/liff")).default

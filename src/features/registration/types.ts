@@ -138,3 +138,16 @@ export type OrderTickets = {
   deliveryType: "Pickup" | "Post"
   tickets: Ticket[]
 }
+
+/** ออเดอร์ที่ผูกกับ LINE ของนักวิ่ง (POST /line/me/orders) หน้า "ตั๋วของฉัน" — ไม่รวมที่หมดเวลา/ยกเลิก */
+export type MyOrder = {
+  orderId: string
+  orderNo: string
+  eventName: string
+  status: OrderStatus
+  total: number
+  runnerCount: number
+  deliveryType: "Pickup" | "Post"
+  trackingNo: string | null
+  createdAt: string
+}
