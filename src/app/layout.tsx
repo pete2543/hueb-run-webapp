@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next"
 import { Noto_Sans_Thai, Prompt } from "next/font/google"
+import { LiffReturn } from "@/components/liff-return"
 import "./globals.css"
 
 const prompt = Prompt({
@@ -28,7 +29,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="th" className={`${prompt.variable} ${notoSansThai.variable} h-full antialiased`}>
-      <body className="flex min-h-full flex-col">{children}</body>
+      <body className="flex min-h-full flex-col">
+        {children}
+        <LiffReturn />
+      </body>
     </html>
   )
 }

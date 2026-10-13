@@ -2,6 +2,7 @@
 
 import { BellRing, CheckCircle2, Loader2 } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
+import { liffReturnKey } from "@/components/liff-return"
 import { linkLine } from "../actions"
 
 const liffId = process.env.NEXT_PUBLIC_LIFF_ID
@@ -35,10 +36,14 @@ export function LineLink({ orderId }: { orderId: string }) {
       await liff.init({ liffId })
       if (!liff.isLoggedIn()) {
         sessionStorage.setItem(pendingKey, "1")
-        liff.login({ redirectUri: window.location.href })
+        // LINE อาจพากลับมาที่หน้าแรก (Endpoint URL) ไม่ใช่หน้านี้ — LiffReturn ใช้ค่านี้พากลับมา
+        const here = window.location.origin + window.location.pathname
+        sessionStorage.setItem(liffReturnKey, here)
+        liff.login({ redirectUri: here })
         return
       }
       sessionStorage.removeItem(pendingKey)
+      sessionStorage.removeItem(liffReturnKey)
       const idToken = liff.getIDToken()
       if (!idToken) throw new Error("no id token")
       const res = await linkLine(orderId, idToken)
